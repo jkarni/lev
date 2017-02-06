@@ -1,0 +1,67 @@
+-- This file has been generated from package.yaml by hpack version 0.15.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:                   lev
+version:                0.0.0.0
+synopsis:               Toy language
+description:            Blah
+category:               Language
+homepage:               http://github.com/jkarni/lev
+bug-reports:            https://github.com/jkarni/lev/issues
+author:                 Julian K. Arni
+maintainer:             jkarni@gmail.com
+copyright:              (c) Julian K. Arni
+license:                BSD3
+license-file:           LICENSE
+tested-with:            GHC == 8.0.1
+build-type:             Simple
+cabal-version:          >= 1.10
+
+extra-source-files:
+    package.yaml
+
+source-repository head
+  type: git
+  location: https://github.com/jkarni/lev
+
+library
+  hs-source-dirs:
+      src
+  default-extensions: AutoDeriveTypeable ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings RankNTypes ScopedTypeVariables TypeFamilies TypeOperators
+  ghc-options: -Wall
+  build-depends:
+      base >= 4.7 && < 4.10
+    , bound >= 2 && < 3
+    , deriving-compat >= 0.3 && < 0.4
+    , containers >= 0.5 && < 0.6
+    , mtl >= 2 && < 3
+    , lens >= 4 && < 5
+  exposed-modules:
+      Lev
+      Lev.Internal
+      Lev.Internal.Expr
+      Lev.Internal.Parser
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  default-extensions: AutoDeriveTypeable ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings RankNTypes ScopedTypeVariables TypeFamilies TypeOperators
+  ghc-options: -Wall
+  build-depends:
+      base >= 4.7 && < 4.10
+    , bound >= 2 && < 3
+    , deriving-compat >= 0.3 && < 0.4
+    , containers >= 0.5 && < 0.6
+    , mtl >= 2 && < 3
+    , lens >= 4 && < 5
+    , hspec > 2 && < 3
+    , QuickCheck >= 2.8 && < 2.9
+    , lev
+  other-modules:
+      Lev.Internal.ExprSpec
+      LevSpec
+  default-language: Haskell2010

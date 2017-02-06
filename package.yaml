@@ -1,0 +1,60 @@
+name:                lev
+version:             0.0.0.0
+synopsis:            Toy language
+description:         Blah
+homepage:            http://github.com/jkarni/lev
+license:             BSD3
+license-file:        LICENSE
+author:              Julian K. Arni
+maintainer:          jkarni@gmail.com
+category:            Language
+copyright:           (c) Julian K. Arni
+github:              jkarni/lev
+tested-with:         GHC == 8.0.1
+
+extra-source-files:
+  - package.yaml
+
+ghc-options: -Wall
+
+dependencies:
+  - base >= 4.7 && < 4.10
+  - bound >= 2 && < 3
+  - deriving-compat >= 0.3 && < 0.4
+  - containers >= 0.5 && < 0.6
+  - mtl >= 2 && < 3
+  - lens >= 4 && < 5
+
+default-extensions:
+  - AutoDeriveTypeable
+  - ConstraintKinds
+  - DataKinds
+  - DefaultSignatures
+  - DeriveFoldable
+  - DeriveFunctor
+  - DeriveGeneric
+  - DeriveTraversable
+  - FlexibleContexts
+  - FlexibleInstances
+  - FunctionalDependencies
+  - GADTs
+  - KindSignatures
+  - MultiParamTypeClasses
+  - OverloadedStrings
+  - RankNTypes
+  - ScopedTypeVariables
+  - TypeFamilies
+  - TypeOperators
+
+library:
+  source-dirs:      src
+  other-modules:    []
+
+tests:
+  spec:
+    main:            Spec.hs
+    source-dirs:     test
+    dependencies:
+      - hspec > 2 && < 3
+      - QuickCheck >= 2.8 && < 2.9
+      - lev

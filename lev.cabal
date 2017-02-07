@@ -63,5 +63,4 @@ test-suite spec
     , lev
   other-modules:
       Lev.Internal.ExprSpec
-      LevSpec
   default-language: Haskell2010

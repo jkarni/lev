@@ -3,10 +3,11 @@
 module Lev.Internal.Expr where
 
 import Bound
-import Control.Monad.State
 import Control.Monad.Except
+import Control.Monad.State
 import Data.Deriving        (deriveEq1, deriveOrd1, deriveRead1, deriveShow1)
 import Data.Functor.Classes
+import Data.String
 import Data.Void
 import GHC.Generics         (Generic)
 
@@ -54,6 +55,9 @@ instance Read a => Read (Term a) where readsPrec = readsPrec1
 instance Eq   a => Eq   (Term a) where (==)      = eq1
 instance Ord  a => Ord  (Term a) where compare   = compare1
 
+instance IsString a => IsString (Term a) where
+  fromString = Var . fromString
+
 
 ------------------------------------------------------------------------------
 -- ** Helpers
@@ -66,6 +70,12 @@ lambda var term = Lambda $ abstract1 var term
 
 variable :: a -> Term a
 variable = Var
+
+($$) :: Term a -> Term a -> Term a
+($$) = Application
+
+(-:) :: Term a -> Term a -> Term a
+(-:) = Annotation
 
 
 ------------------------------------------------------------------------------
@@ -106,6 +116,7 @@ nf (Application fn val) = case nf fn of
   fn'      -> Application fn' (nf val)
 nf (Var x) = Var x
 nf (Lambda x) = Lambda $ toScope $ nf $ fromScope x
+nf (Pi typ x) = Pi (nf typ) (toScope $ nf $ fromScope x)
 
 -- | Resolve all free variables by looking them up in the environment.
 -- Currently fails by burning.
@@ -125,29 +136,47 @@ resolve x = do
 ------------------------------------------------------------------------------
 
 inferType :: Ord v => Context v -> Term v -> Either String (Term v)
-inferType ctx (Annotation e an) = do
-  checkType ctx an Type
-  checkType ctx e  an
-  return an
-inferType ctx (Application fn val) = do
-  fnType <- inferType ctx fn
-  case fnType of
-    Pi arg binding -> do
-      checkType ctx arg Type
-      return $ instantiate1 val binding
-    _ -> throwError "Application of non-function type"
-inferType ctx (Var x) = case lookupCtx x ctx of
-  Nothing -> throwError "Unknown identifier"
-  Just v  -> return v
-inferType _ Type = return Type
-inferType _ _   = throwError "Can't infer type"
+inferType ctx t = inferType' ctx (Right <$> t)
+
+inferType' :: Ord v => Context v -> Term (Either (Term v) v) -> Either String (Term v)
+inferType' ctx term = case term of
+  Annotation e an -> do
+    checkType' ctx an Type
+    checkType' ctx e  an
+    return $ fromRight <$> an
+  Application fn val -> do
+    fnType <- inferType' ctx fn
+    case fnType of
+      Pi arg binding -> do
+        checkType ctx arg Type
+        return $ fromRight <$> instantiate1 val (Right <$> binding)
+      _ -> throwError "Application of non-function type"
+  Var x -> case lookupCtx (fromRight x) ctx of
+    Nothing -> throwError "Unknown identifier"
+    Just v  -> return v
+  Pi typ binding -> do
+    checkType' ctx typ Type
+    checkType' ctx (instantiate1 Type binding) Type
+    return Type
+  Type -> return Type
+  _ -> throwError "Can't infer type"
 
 checkType :: Ord v => Context v -> Term v -> Term v -> Either String ()
-checkType ctx (Lambda e) (Pi t b) = error "not implemented"
-checkType ctx x expectedType = do
-  actualType <- inferType ctx x
-  when (actualType /= expectedType) $ throwError "Type mismatch"
+checkType ctx term typ = checkType' ctx (Right <$> term) (Right <$> typ)
 
+checkType' :: Ord v => Context v -> Term (Either (Term v) v)
+  -> Term (Either (Term v) v) -> Either String ()
+checkType' ctx (Lambda e) (Pi t b) = do
+  checkType' ctx (instantiate1 t e)
+                 (instantiate1 t b)
+checkType' ctx x expectedType = do
+  actualType <- inferType' ctx x
+  when ((Right <$> actualType) /= expectedType) $ throwError "Type mismatch"
+
+
+fromRight :: Either a b -> b
+fromRight (Right x) = x
+fromRight _ = error "Not right"
 {-
 ------------------------------------------------------------------------------
 -- Bibliography

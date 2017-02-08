@@ -33,10 +33,13 @@ library
   build-depends:
       base >= 4.7 && < 4.10
     , bound >= 2 && < 3
+    , bound-gen >= 0.1 && < 0.2
     , deriving-compat >= 0.3 && < 0.4
     , containers >= 0.5 && < 0.6
     , mtl >= 2 && < 3
+    , monad-gen >= 0.3 && < 0.4
     , lens >= 4 && < 5
+    , text >= 1.2 && < 2
   exposed-modules:
       Lev
       Lev.Internal
@@ -54,10 +57,13 @@ test-suite spec
   build-depends:
       base >= 4.7 && < 4.10
     , bound >= 2 && < 3
+    , bound-gen >= 0.1 && < 0.2
     , deriving-compat >= 0.3 && < 0.4
     , containers >= 0.5 && < 0.6
     , mtl >= 2 && < 3
+    , monad-gen >= 0.3 && < 0.4
     , lens >= 4 && < 5
+    , text >= 1.2 && < 2
     , hspec > 2 && < 3
     , QuickCheck >= 2.8 && < 2.9
     , lev

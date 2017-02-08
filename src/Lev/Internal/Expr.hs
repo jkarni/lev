@@ -3,46 +3,61 @@
 module Lev.Internal.Expr where
 
 import Bound
+import Bound.Unwrap
 import Control.Monad.Except
 import Control.Monad.State
+import Control.Monad.Reader
+import Control.Monad.Gen.Class
 import Data.Deriving        (deriveEq1, deriveOrd1, deriveRead1, deriveShow1)
 import Data.Functor.Classes
+import Data.Monoid
 import Data.String
 import Data.Void
 import GHC.Generics         (Generic)
 
-import qualified Data.Map as Map
-
--- We use Normalization by Evaluation (NbE) to normalize terms during
--- type-checking. This involves transforming the deep embedding of syntactic
--- terms into its denotation or semantics, which is a shallow embedding (this
--- process is called 'reflection'). Then we *reify* the semantic term back into
--- a syntactic one.
+import qualified Data.Map  as Map
+import qualified Data.Text as T
 
 ------------------------------------------------------------------------------
--- * Syntactic (Terms)
+-- * Unbound
 ------------------------------------------------------------------------------
+class (Ord a, Show a) => Unbound a where
+  unbound :: a
+instance Unbound String where unbound = "_"
+instance Unbound v => Unbound (Either (Term v) v)  where unbound = Right unbound
 
--- We use bidirectional typechecking; however, since it turns out to be hard or
--- impossible to use 'bound' with mutually recursive datatypes, we coalesce
--- inferrable and checkable terms into a single datatype. This in turn means
--- some terms are representable that are invalid.
 
 ------------------------------------------------------------------------------
--- ** Types
+-- * Terms
+------------------------------------------------------------------------------
 
 -- | Inferrable or checkable terms.
+--
+-- 'bound' doesn't allow mutually recursive types, so all types (inferrable,
+-- checkable, description) are folded in.
 data Term a
 
   -- Inferrable
-  = Annotation (Term a) (Term a)
-  | Type
-  | Application (Term a) (Term a)
-  | Var a
-  | Pi (Term a) (Scope () Term a) -- (pi (x : X) x)
+  = Annotation (Term a) (Term a)      -- (: val typ)
+  | Type                              -- Type
+  | Application (Term a) (Term a)     -- (fn val)
+  | Var a                             -- x
+  | Pi (Term a) (Scope () Term a)     -- (Pi X x x)
+  | Sigma (Term a) (Scope () Term a)  -- (Sigma X x x)
+  | UnitType                          -- Unit
+  | UnitValue                         -- ()
+  | Tag T.Text                        -- #Zero
+  | TagType                           -- Tag
+
+  --- Description
+  | Description (Term a)
+  | EndDesc (Term a)
+  | RecDesc (Term a) (Term a)
+  | ArgDesc (Term a) (Term a)
 
   -- Checkable
-  | Lambda (Scope () Term a)
+  | Pair (Term a) (Term a)            -- '(x y)
+  | Lambda (Scope () Term a)          -- (Lam x x)
   deriving (Functor, Foldable, Traversable, Generic)
 
 makeBound   ''Term
@@ -65,8 +80,17 @@ instance IsString a => IsString (Term a) where
 pi :: Eq a => a -> Term a -> Term a -> Term a
 pi var typ term = Pi typ $ abstract1 var term
 
+{-fnType :: Unbound a => Term a -> Term a -> Term a-}
+{-fnType arg term = Pi arg $ abstract1 unbound term-}
+
+sigma :: Eq a => a -> Term a -> Term a -> Term a
+sigma var typ term = Sigma typ $ abstract1 var term
+
 lambda :: Eq a => a -> Term a -> Term a
 lambda var term = Lambda $ abstract1 var term
+
+pair :: Term a -> Term a -> Term a
+pair = Pair
 
 variable :: a -> Term a
 variable = Var
@@ -83,9 +107,20 @@ variable = Var
 ------------------------------------------------------------------------------
 
 newtype Environment v a = Environment
-  { getEnv :: ExceptT String (State (Map.Map v (Term Void))) a }
+  { getEnv :: ExceptT String (StateT (Map.Map v (Term Int))
+                                     (ReaderT (Map.Map Int (Term Int)) (UnwrapT Maybe))) a }
   deriving ( Functor, Applicative, Monad, MonadError String
-           , MonadState (Map.Map v (Term Void)))
+           , MonadState (Map.Map v (Term Int))
+           , MonadReader (Map.Map Int (Term Int))
+           , MonadGen Counter
+           )
+
+lookupLocal :: Int -> Environment v (Maybe (Term Int))
+lookupLocal i = asks (Map.lookup i)
+
+lookupGlobal :: Ord v => v -> Environment v (Maybe (Term Int))
+lookupGlobal i = gets (Map.lookup i)
+
 
 ------------------------------------------------------------------------------
 -- * Context
@@ -117,6 +152,16 @@ nf (Application fn val) = case nf fn of
 nf (Var x) = Var x
 nf (Lambda x) = Lambda $ toScope $ nf $ fromScope x
 nf (Pi typ x) = Pi (nf typ) (toScope $ nf $ fromScope x)
+nf (Sigma typ x) = Sigma (nf typ) (toScope $ nf $ fromScope x)
+nf (Pair a b) = Pair (nf a) (nf b)
+nf UnitType = UnitType
+nf UnitValue = UnitValue
+nf TagType = TagType
+nf (Description x) = Description $ nf x
+nf (EndDesc x) = EndDesc $ nf x
+nf (RecDesc x y) = RecDesc (nf x) (nf y)
+nf (ArgDesc x y) = ArgDesc (nf x) (nf y)
+nf (Tag x) = Tag x
 
 -- | Resolve all free variables by looking them up in the environment.
 -- Currently fails by burning.
@@ -134,44 +179,79 @@ resolve x = do
 ------------------------------------------------------------------------------
 -- * Type checking
 ------------------------------------------------------------------------------
+-- We use "Either (Term v) v" for variable type, indicating that it is either a
+-- name or a type. As we move under binders, we transform bound names into
+-- types.
 
-inferType :: Ord v => Context v -> Term v -> Either String (Term v)
-inferType ctx t = inferType' ctx (Right <$> t)
 
-inferType' :: Ord v => Context v -> Term (Either (Term v) v) -> Either String (Term v)
-inferType' ctx term = case term of
+inferType :: Term Int -> Environment Int (Term Int)
+inferType term = case term of
   Annotation e an -> do
-    checkType' ctx an Type
-    checkType' ctx e  an
-    return $ fromRight <$> an
+    checkType an Type
+    checkType e  an
+    return $ an
   Application fn val -> do
-    fnType <- inferType' ctx fn
-    case fnType of
+    fnType' <- inferType fn
+    case fnType' of
       Pi arg binding -> do
-        checkType ctx arg Type
-        return $ fromRight <$> instantiate1 val (Right <$> binding)
+        checkType arg Type
+        return $ instantiate1 val binding
       _ -> throwError "Application of non-function type"
-  Var x -> case lookupCtx (fromRight x) ctx of
-    Nothing -> throwError "Unknown identifier"
-    Just v  -> return v
+  Var x -> do
+    mloc <- lookupLocal x
+    case mloc of
+      Nothing -> do
+        mglob <- lookupGlobal x
+        case mglob of
+          Nothing -> throwError "Unknown identifier"
+          Just v  -> return v
+      Just v -> return v
   Pi typ binding -> do
-    checkType' ctx typ Type
-    checkType' ctx (instantiate1 Type binding) Type
+    checkType typ Type
+    checkType (instantiate1 Type binding) Type
     return Type
-  Type -> return Type
-  _ -> throwError "Can't infer type"
+  Sigma typ binding -> do
+    checkType typ Type
+    checkType (instantiate1 Type binding) Type
+    return Type
+  Type      -> return Type
+  UnitType  -> return Type
+  UnitValue -> return UnitType
+  Tag _     -> return TagType
+  TagType   -> return Type
+  Description x -> do
+    checkType x Type
+    return Type
 
-checkType :: Ord v => Context v -> Term v -> Term v -> Either String ()
-checkType ctx term typ = checkType' ctx (Right <$> term) (Right <$> typ)
+  Lambda _    -> throwError "Can't infer type for lambdas"
+  Pair _ _    -> throwError "Can't infer type for pairs"
+  EndDesc _   -> throwError "Can't infer type for descriptions"
+  RecDesc _ _ -> throwError "Can't infer type for descriptions"
+  ArgDesc _ _ -> throwError "Can't infer type for descriptions"
 
-checkType' :: Ord v => Context v -> Term (Either (Term v) v)
-  -> Term (Either (Term v) v) -> Either String ()
-checkType' ctx (Lambda e) (Pi t b) = do
-  checkType' ctx (instantiate1 t e)
-                 (instantiate1 t b)
-checkType' ctx x expectedType = do
-  actualType <- inferType' ctx x
-  when ((Right <$> actualType) /= expectedType) $ throwError "Type mismatch"
+
+checkType :: Term Int -> Term Int -> Environment Int ()
+checkType (Lambda e) (Pi t b) = do
+  -- (: (lambda x x) (pi Int t Int))
+  -- In the lambda we instantiate with 'Left t', meaning the *type* of the
+  -- variable must be 't'. In pi, we instantiate with 'Right t', meaning the
+  -- variable itself must
+  checkType (instantiate1 t e) (instantiate1 t b)
+checkType (Pair a b) (Sigma t t') = do
+  checkType a t
+  checkType b (instantiate1 t t')
+checkType (EndDesc x) (Description typ) = checkType x typ
+checkType (RecDesc a b) (Description typ) = do
+  checkType a typ
+  checkType b (Description typ)
+checkType (ArgDesc a b) d@(Description _) = do
+  checkType a Type
+  error "not impl" -- checkType b (fnType a d)
+checkType x expectedType = do
+  actualType <- inferType x
+  when (actualType /= expectedType) $
+    throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
+              <> "Saw:\n\t" <> show actualType
 
 
 fromRight :: Either a b -> b
@@ -184,4 +264,5 @@ fromRight _ = error "Not right"
 [MiniTT] A simple type-theoretic language: Mini-TT (Coquand et al)
 [PracLev] The Practical Guide to Levitation (Al-Sibahi)
 [GentleLev] The Gentle Art of Levitation (Chapman et al)
+[GenElim] Generic Constructors and Eliminators from Descriptions (Diehl, Sheard)
 -}

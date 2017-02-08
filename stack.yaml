@@ -39,11 +39,13 @@ packages:
 - '.'
 - location:
     git: https://github.com/ekmett/bound
-    commit: ca0de565674f53a70c2b3d7aa5d1d903e44abd55
+    commit: db3f5baaf975b074612917d6f6e53b6b7ceff8b0
   extra-dep: true
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-extra-deps: []
+extra-deps:
+- bound-gen-0.1.0.2
+- monad-gen-0.3.0.1
 
 # Override default flag values for local packages and extra-deps
 flags: {}

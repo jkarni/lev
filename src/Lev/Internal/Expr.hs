@@ -121,22 +121,18 @@ lookupLocal i = asks (Map.lookup i)
 lookupGlobal :: Ord v => v -> Environment v (Maybe (Term Int))
 lookupGlobal i = gets (Map.lookup i)
 
+addingLocal :: Int -> Term Int -> Environment v a -> Environment v a
+addingLocal i t inExp = local (Map.insert i t) inExp
 
-------------------------------------------------------------------------------
--- * Context
-------------------------------------------------------------------------------
+runEnv :: Map.Map v (Term Int) -> Environment v a -> Either String a
+runEnv glob e
+  = case runUnwrapT $ runReaderT (evalStateT (runExceptT $ getEnv e) glob) mempty of
+    Nothing -> throwError "Unknown identifier"
+    Just v  -> v
 
-newtype Context v = Context { getCtx :: Map.Map v (Term v) }
-  deriving (Eq, Show, Ord, Generic)
+emptyCtx :: Map.Map v (Term Int)
+emptyCtx = Map.empty
 
-emptyCtx :: Context v
-emptyCtx = Context $ Map.empty
-
-lookupCtx :: Ord v => v -> Context v -> Maybe (Term v)
-lookupCtx v (Context ctx) = Map.lookup v ctx
-
-extendCtx :: Ord v => v -> Term v -> Context v -> Context v
-extendCtx var typ (Context ctx) = Context $ Map.insert var typ ctx
 
 
 ------------------------------------------------------------------------------
@@ -183,18 +179,20 @@ resolve x = do
 -- name or a type. As we move under binders, we transform bound names into
 -- types.
 
+inferType :: Map.Map Int (Term Int) -> Term Int -> Either String (Term Int)
+inferType globCtx term = runEnv globCtx (inferType' term)
 
-inferType :: Term Int -> Environment Int (Term Int)
-inferType term = case term of
+inferType' :: Term Int -> Environment Int (Term Int)
+inferType' term = case term of
   Annotation e an -> do
-    checkType an Type
-    checkType e  an
+    checkType' an Type
+    checkType' e  an
     return $ an
   Application fn val -> do
-    fnType' <- inferType fn
+    fnType' <- inferType' fn
     case fnType' of
       Pi arg binding -> do
-        checkType arg Type
+        checkType' arg Type
         return $ instantiate1 val binding
       _ -> throwError "Application of non-function type"
   Var x -> do
@@ -207,12 +205,12 @@ inferType term = case term of
           Just v  -> return v
       Just v -> return v
   Pi typ binding -> do
-    checkType typ Type
-    checkType (instantiate1 Type binding) Type
+    checkType' typ Type
+    checkType' (instantiate1 Type binding) Type
     return Type
   Sigma typ binding -> do
-    checkType typ Type
-    checkType (instantiate1 Type binding) Type
+    checkType' typ Type
+    checkType' (instantiate1 Type binding) Type
     return Type
   Type      -> return Type
   UnitType  -> return Type
@@ -220,7 +218,7 @@ inferType term = case term of
   Tag _     -> return TagType
   TagType   -> return Type
   Description x -> do
-    checkType x Type
+    checkType' x Type
     return Type
 
   Lambda _    -> throwError "Can't infer type for lambdas"
@@ -229,31 +227,32 @@ inferType term = case term of
   RecDesc _ _ -> throwError "Can't infer type for descriptions"
   ArgDesc _ _ -> throwError "Can't infer type for descriptions"
 
+checkType :: Map.Map Int (Term Int) -> Term Int -> Term Int -> Either String ()
+checkType globCtx term expect = runEnv globCtx (checkType' term expect)
 
-checkType :: Term Int -> Term Int -> Environment Int ()
-checkType (Lambda e) (Pi t b) = do
-  -- (: (lambda x x) (pi Int t Int))
-  -- In the lambda we instantiate with 'Left t', meaning the *type* of the
-  -- variable must be 't'. In pi, we instantiate with 'Right t', meaning the
-  -- variable itself must
-  checkType (instantiate1 t e) (instantiate1 t b)
-checkType (Pair a b) (Sigma t t') = do
-  checkType a t
-  checkType b (instantiate1 t t')
-checkType (EndDesc x) (Description typ) = checkType x typ
-checkType (RecDesc a b) (Description typ) = do
-  checkType a typ
-  checkType b (Description typ)
-checkType (ArgDesc a b) d@(Description _) = do
-  checkType a Type
-  error "not impl" -- checkType b (fnType a d)
-checkType x expectedType = do
-  actualType <- inferType x
+checkType' :: Term Int -> Term Int -> Environment Int ()
+checkType' (Lambda e) (Pi t b) = do
+  (newVar, e') <- unbind e
+  checkType' (instantiate1 t e) (instantiate1 t b)
+checkType' (Pair a b) (Sigma t t') = do
+  checkType' a t
+  checkType' b (instantiate1 t t')
+checkType' (EndDesc x) (Description typ) = checkType' x typ
+checkType' (RecDesc a b) (Description typ) = do
+  checkType' a typ
+  checkType' b (Description typ)
+checkType' (ArgDesc a b) d@(Description _) = do
+  checkType' a Type
+  error "not impl" -- checkType' b (fnType a d)
+checkType' x expectedType = do
+  actualType <- inferType' x
   when (actualType /= expectedType) $
     throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
               <> "Saw:\n\t" <> show actualType
 
 
+unbind :: (MonadGen a m, Functor m, Monad f) => Scope () f a -> m (a, f a)
+unbind scope = ((,) <*> flip instantiate1 scope . return) <$> gen
 fromRight :: Either a b -> b
 fromRight (Right x) = x
 fromRight _ = error "Not right"

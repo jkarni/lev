@@ -3,11 +3,8 @@
 module Lev.Internal.Expr where
 
 import Bound
-import Bound.Unwrap
 import Control.Monad.Except
 import Control.Monad.State
-import Control.Monad.Reader
-import Control.Monad.Gen.Class
 import Data.Deriving        (deriveEq1, deriveOrd1, deriveRead1, deriveShow1)
 import Data.Functor.Classes
 import Data.Monoid
@@ -80,8 +77,8 @@ instance IsString a => IsString (Term a) where
 pi :: Eq a => a -> Term a -> Term a -> Term a
 pi var typ term = Pi typ $ abstract1 var term
 
-{-fnType :: Unbound a => Term a -> Term a -> Term a-}
-{-fnType arg term = Pi arg $ abstract1 unbound term-}
+fnType :: Unbound a => Term a -> Term a -> Term a
+fnType arg term = Pi arg $ abstract1 unbound term
 
 sigma :: Eq a => a -> Term a -> Term a -> Term a
 sigma var typ term = Sigma typ $ abstract1 var term
@@ -107,32 +104,25 @@ variable = Var
 ------------------------------------------------------------------------------
 
 newtype Environment v a = Environment
-  { getEnv :: ExceptT String (StateT (Map.Map v (Term Int))
-                                     (ReaderT (Map.Map Int (Term Int)) (UnwrapT Maybe))) a }
+  { getEnv :: ExceptT String (State (Map.Map v (Term Void))) a }
   deriving ( Functor, Applicative, Monad, MonadError String
-           , MonadState (Map.Map v (Term Int))
-           , MonadReader (Map.Map Int (Term Int))
-           , MonadGen Counter
-           )
+           , MonadState (Map.Map v (Term Void)))
 
-lookupLocal :: Int -> Environment v (Maybe (Term Int))
-lookupLocal i = asks (Map.lookup i)
+------------------------------------------------------------------------------
+-- * Context
+------------------------------------------------------------------------------
 
-lookupGlobal :: Ord v => v -> Environment v (Maybe (Term Int))
-lookupGlobal i = gets (Map.lookup i)
+newtype Context v = Context { getCtx :: Map.Map v (Term v) }
+  deriving (Eq, Show, Ord, Generic)
 
-addingLocal :: Int -> Term Int -> Environment v a -> Environment v a
-addingLocal i t inExp = local (Map.insert i t) inExp
+emptyCtx :: Context v
+emptyCtx = Context $ Map.empty
 
-runEnv :: Map.Map v (Term Int) -> Environment v a -> Either String a
-runEnv glob e
-  = case runUnwrapT $ runReaderT (evalStateT (runExceptT $ getEnv e) glob) mempty of
-    Nothing -> throwError "Unknown identifier"
-    Just v  -> v
+lookupCtx :: Ord v => v -> Context v -> Maybe (Term v)
+lookupCtx v (Context ctx) = Map.lookup v ctx
 
-emptyCtx :: Map.Map v (Term Int)
-emptyCtx = Map.empty
-
+extendCtx :: Ord v => v -> Term v -> Context v -> Context v
+extendCtx var typ (Context ctx) = Context $ Map.insert var typ ctx
 
 
 ------------------------------------------------------------------------------
@@ -179,38 +169,33 @@ resolve x = do
 -- name or a type. As we move under binders, we transform bound names into
 -- types.
 
-inferType :: Map.Map Int (Term Int) -> Term Int -> Either String (Term Int)
-inferType globCtx term = runEnv globCtx (inferType' term)
+inferType :: Unbound v => Context v -> Term v -> Either String (Term v)
+inferType ctx t = inferType' ctx (Right <$> t)
 
-inferType' :: Term Int -> Environment Int (Term Int)
-inferType' term = case term of
+inferType' :: Unbound v => Context v -> Term (Either (Term v) v) -> Either String (Term v)
+inferType' ctx term = case term of
   Annotation e an -> do
-    checkType' an Type
-    checkType' e  an
-    return $ an
+    checkType' ctx an Type
+    checkType' ctx e  an
+    return $ fromRight <$> an
   Application fn val -> do
-    fnType' <- inferType' fn
+    fnType' <- inferType' ctx fn
     case fnType' of
       Pi arg binding -> do
-        checkType' arg Type
-        return $ instantiate1 val binding
+        checkType ctx arg Type
+        return $ fromRight <$> instantiate1 val (Right <$> binding)
       _ -> throwError "Application of non-function type"
-  Var x -> do
-    mloc <- lookupLocal x
-    case mloc of
-      Nothing -> do
-        mglob <- lookupGlobal x
-        case mglob of
-          Nothing -> throwError "Unknown identifier"
-          Just v  -> return v
-      Just v -> return v
+  Var (Left e) -> return e -- local variable
+  Var (Right x) -> case lookupCtx x ctx of  -- global variable
+    Nothing -> throwError "Unknown identifier"
+    Just v  -> return v
   Pi typ binding -> do
-    checkType' typ Type
-    checkType' (instantiate1 Type binding) Type
+    checkType' ctx typ Type
+    checkType' ctx (instantiate1 Type binding) Type
     return Type
   Sigma typ binding -> do
-    checkType' typ Type
-    checkType' (instantiate1 Type binding) Type
+    checkType' ctx typ Type
+    checkType' ctx (instantiate1 Type binding) Type
     return Type
   Type      -> return Type
   UnitType  -> return Type
@@ -218,7 +203,7 @@ inferType' term = case term of
   Tag _     -> return TagType
   TagType   -> return Type
   Description x -> do
-    checkType' x Type
+    checkType' ctx x Type
     return Type
 
   Lambda _    -> throwError "Can't infer type for lambdas"
@@ -227,32 +212,35 @@ inferType' term = case term of
   RecDesc _ _ -> throwError "Can't infer type for descriptions"
   ArgDesc _ _ -> throwError "Can't infer type for descriptions"
 
-checkType :: Map.Map Int (Term Int) -> Term Int -> Term Int -> Either String ()
-checkType globCtx term expect = runEnv globCtx (checkType' term expect)
+checkType :: Unbound v => Context v -> Term v -> Term v -> Either String ()
+checkType ctx term typ = checkType' ctx (Right <$> term) (Right <$> typ)
 
-checkType' :: Term Int -> Term Int -> Environment Int ()
-checkType' (Lambda e) (Pi t b) = do
-  (newVar, e') <- unbind e
-  checkType' (instantiate1 t e) (instantiate1 t b)
-checkType' (Pair a b) (Sigma t t') = do
-  checkType' a t
-  checkType' b (instantiate1 t t')
-checkType' (EndDesc x) (Description typ) = checkType' x typ
-checkType' (RecDesc a b) (Description typ) = do
-  checkType' a typ
-  checkType' b (Description typ)
-checkType' (ArgDesc a b) d@(Description _) = do
-  checkType' a Type
-  error "not impl" -- checkType' b (fnType a d)
-checkType' x expectedType = do
-  actualType <- inferType' x
-  when (actualType /= expectedType) $
+checkType' :: Unbound v => Context v -> Term (Either (Term v) v)
+  -> Term (Either (Term v) v) -> Either String ()
+checkType' ctx (Lambda e) (Pi t b) = do
+  -- (: (lambda x x) (pi Int t Int))
+  -- In the lambda we instantiate with 'Left t', meaning the *type* of the
+  -- variable must be 't'. In pi, we instantiate with 'Right t', meaning the
+  -- variable itself must
+  checkType' ctx (instantiate1 t e)
+                 (instantiate1 t b)
+checkType' ctx (Pair a b) (Sigma t t') = do
+  checkType' ctx a t
+  checkType' ctx b (instantiate1 t t')
+checkType' ctx (EndDesc x) (Description typ) = checkType' ctx x typ
+checkType' ctx (RecDesc a b) (Description typ) = do
+  checkType' ctx a typ
+  checkType' ctx b (Description typ)
+checkType' ctx (ArgDesc a b) d@(Description _) = do
+  checkType' ctx a Type
+  checkType' ctx b (fnType a d)
+checkType' ctx x expectedType = do
+  actualType <- inferType' ctx x
+  when ((Right <$> actualType) /= expectedType) $
     throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
               <> "Saw:\n\t" <> show actualType
 
 
-unbind :: (MonadGen a m, Functor m, Monad f) => Scope () f a -> m (a, f a)
-unbind scope = ((,) <*> flip instantiate1 scope . return) <$> gen
 fromRight :: Either a b -> b
 fromRight (Right x) = x
 fromRight _ = error "Not right"

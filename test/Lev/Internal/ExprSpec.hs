@@ -59,7 +59,6 @@ checkTypeSpec = describe "checkType" $ do
 
   it "accepts correctly typed pi terms" $ do
     checks (lambda "x" (Var "x")) (fnType UnitType UnitType)
-    checks (lambda "x" (Var "x")) (pi "t" Type (Var "t"))
 
   it "rejects incorrectly typed pi terms" $ do
     doesn'tCheck (lambda "x" (Var "x")) Type
@@ -89,5 +88,5 @@ checkTypeSpec = describe "checkType" $ do
 
   it "rejects incorrectly typed ArgDescs" $ do
     let fn = lambda "x" (EndDesc (Var "x"))
-          -: fnType UnitType (Description Type)
-    checks (ArgDesc UnitType fn) (Description Type)
+          -: fnType UnitType (Description UnitType)
+    checks (ArgDesc UnitType fn) (Description UnitType)

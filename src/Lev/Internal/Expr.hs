@@ -182,10 +182,11 @@ inferType' ctx term = case term of
     fnType' <- inferType' ctx fn
     case fnType' of
       Pi arg binding -> do
-        checkType ctx arg Type
+        checkType' ctx (Right <$> arg) Type
         return $ fromRight <$> instantiate1 val (Right <$> binding)
       _ -> throwError "Application of non-function type"
-  Var (Left e) -> return e -- local variable
+  Var (Left e) -> do
+    return e -- local variable
   Var (Right x) -> case lookupCtx x ctx of  -- global variable
     Nothing -> throwError "Unknown identifier"
     Just v  -> return v
@@ -222,8 +223,9 @@ checkType' ctx (Lambda e) (Pi t b) = do
   -- In the lambda we instantiate with 'Left t', meaning the *type* of the
   -- variable must be 't'. In pi, we instantiate with 'Right t', meaning the
   -- variable itself must
-  checkType' ctx (instantiate1 t e)
-                 (instantiate1 t b)
+  above <- inferType' ctx t
+  checkType' ctx (instantiate1 (toTyped t) e)
+                 (instantiate1 (Var $ Left above) b)
 checkType' ctx (Pair a b) (Sigma t t') = do
   checkType' ctx a t
   checkType' ctx b (instantiate1 t t')
@@ -234,12 +236,19 @@ checkType' ctx (RecDesc a b) (Description typ) = do
 checkType' ctx (ArgDesc a b) d@(Description _) = do
   checkType' ctx a Type
   checkType' ctx b (fnType a d)
+checkType' ctx x (Var (Left expectedType)) = do
+  actualType <- inferType' ctx x
+  when (actualType /= expectedType) $
+    throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
+              <> "Saw:\n\t" <> show actualType
 checkType' ctx x expectedType = do
   actualType <- inferType' ctx x
   when ((Right <$> actualType) /= expectedType) $
     throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
               <> "Saw:\n\t" <> show actualType
 
+toTyped :: Term (Either (Term v) v) -> Term (Either (Term v) v)
+toTyped v = Var . Left $ fromRight <$> v
 
 fromRight :: Either a b -> b
 fromRight (Right x) = x

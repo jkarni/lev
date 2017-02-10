@@ -54,7 +54,7 @@ data Term a
 
   -- Checkable
   | Pair (Term a) (Term a)            -- '(x y)
-  | Lambda (Scope () Term a)          -- (Lam x x)
+  | Lambda (Scope () Term a)          -- (lam x x)
   deriving (Functor, Foldable, Traversable, Generic)
 
 makeBound   ''Term

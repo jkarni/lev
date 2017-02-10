@@ -11,7 +11,12 @@ import qualified Data.Text as T
 import Lev.Internal.Expr
 
 exprP :: (Monad m, TokenParsing m) => m (Term T.Text)
-exprP = annotationP <|> typeP <|> applicationP <|> varP <|> piP
+exprP = annotationP
+    <|> typeP
+    <|> applicationP
+    <|> varP
+    <|> piP
+    <|> lambdaP
 
 annotationP :: (Monad m, TokenParsing m) => m (Term T.Text)
 annotationP = parens $ (-:) <$> exprP <*> exprP
@@ -27,11 +32,19 @@ varP = variable <$> ident identStyle
 
 piP :: (Monad m, TokenParsing m) => m (Term T.Text)
 piP = parens $ do
-  _ <- textSymbol "Pi"
+  _ <- textSymbol "pi"
   typ <- exprP
   var <- ident identStyle
   body <- exprP
   return $ pi var typ body
+
+lambdaP :: (Monad m, TokenParsing m) => m (Term T.Text)
+lambdaP = parens $ do
+  _ <- textSymbol "lam"
+  var <- ident identStyle
+  body <- exprP
+  return $ lambda var body
+
 
 ------------------------------------------------------------------------------
 -- Identifiers

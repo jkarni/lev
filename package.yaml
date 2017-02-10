@@ -29,6 +29,7 @@ dependencies:
   - text >= 1.2 && < 2
   - trifecta >= 1.6 && < 2
   - parsers >= 0.12 && < 0.13
+  - ansi-wl-pprint >= 0.6 && < 0.7
 
 default-extensions:
   - AutoDeriveTypeable
@@ -62,4 +63,13 @@ tests:
     dependencies:
       - hspec > 2 && < 3
       - QuickCheck >= 2.8 && < 2.9
+      - lev
+
+executables:
+  dt:
+    main:            Dt.hs
+    source-dirs:     exe
+    dependencies:
+      - QuickCheck >= 2.8 && < 2.9
+      - optparse-applicative
       - lev

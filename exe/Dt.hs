@@ -25,7 +25,7 @@ run opts
 ------------------------------------------------------------------------------
 
 fullOpts :: ParserInfo Options
-fullOpts = info options
+fullOpts = info (helper <*> options)
                (fullDesc
               <> progDesc "The dt interpreter"
                )

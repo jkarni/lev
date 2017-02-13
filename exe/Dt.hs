@@ -1,8 +1,10 @@
 module Main (main) where
 
+import Control.Monad
 import GHC.Generics        (Generic)
-import Lev
 import Options.Applicative
+
+import Lev
 
 main :: IO ()
 main = execParser fullOpts >>= run
@@ -14,7 +16,9 @@ run opts
   | parseOnly opts
       = parseFile (file opts) >>= print
   | typeCheckOnly opts
-      = typeCheckFile (file opts)
+      = void $ typeCheckFile (file opts)
+  | otherwise
+      = evalFile (file opts)
 
 ------------------------------------------------------------------------------
 -- Options

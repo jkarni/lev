@@ -2,3 +2,6 @@
 (= identity
  (lam t
   (lam i i)))
+
+(: main (pi Type x Type))
+(= main (identity Type))

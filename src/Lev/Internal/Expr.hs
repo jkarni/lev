@@ -169,7 +169,7 @@ inferType' ctx term = case term of
   Var (Left e) -> do
     return e -- local variable
   Var (Right x) -> case lookupCtx x ctx of  -- global variable
-    Nothing -> throwError "Unknown identifier"
+    Nothing -> throwError $ "Unknown identifier: " ++ show x
     Just v  -> return v
   Pi typ binding -> do
     checkType' ctx typ Type
@@ -221,12 +221,12 @@ checkType' ctx x (Var (Left expectedType)) = do
   actualType <- inferType' ctx x
   when (actualType /= expectedType) $
     throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
-              <> "Saw:\n\t" <> show actualType
+              <> "\nSaw:\n\t" <> show actualType
 checkType' ctx x expectedType = do
   actualType <- inferType' ctx x
   when ((Right <$> actualType) /= expectedType) $
     throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
-              <> "Saw:\n\t" <> show actualType
+              <> "\nSaw:\n\t" <> show actualType
 
 toTyped :: (HasCallStack, Show v) => Term (Either (Term v) v) -> Term (Either (Term v) v)
 toTyped v = Var . Left $ fromRight <$> v

@@ -33,4 +33,4 @@ typeCheckFile fp = do
   parsedProg <- parseFile fp
   case runEnvironment $ typeCheckProgram parsedProg of
     Left e -> error e
-    Right () -> return ()
+    Right () -> putStrLn "Program typechecks!"

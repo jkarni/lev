@@ -9,10 +9,12 @@ import Data.Functor.Classes
 import Data.Monoid
 import Data.String
 import GHC.Generics         (Generic)
+import GHC.Stack            (HasCallStack)
 
 import qualified Data.Map  as Map
 import qualified Data.Text as T
 
+import Debug.Trace
 ------------------------------------------------------------------------------
 -- * Unbound
 ------------------------------------------------------------------------------
@@ -120,7 +122,7 @@ extendCtx var typ (Context ctx) = Context $ Map.insert var typ ctx
 -- * Evaluation
 ------------------------------------------------------------------------------
 
-nf :: Term a -> Term a
+nf :: (HasCallStack) => Term a -> Term a
 nf (Annotation e y) = Annotation (nf e) (nf y)
 nf Type = Type
 nf (Application fn val) = case nf fn of
@@ -148,10 +150,10 @@ nf (Tag x) = Tag x
 -- name or a type. As we move under binders, we transform bound names into
 -- types.
 
-inferType :: Unbound v => Context v -> Term v -> Either String (Term v)
+inferType :: (HasCallStack, Unbound v) => Context v -> Term v -> Either String (Term v)
 inferType ctx t = inferType' ctx (Right <$> t)
 
-inferType' :: Unbound v => Context v -> Term (Either (Term v) v) -> Either String (Term v)
+inferType' :: (HasCallStack, Unbound v) => Context v -> Term (Either (Term v) v) -> Either String (Term v)
 inferType' ctx term = case term of
   Annotation e an -> do
     checkType' ctx an Type
@@ -192,10 +194,10 @@ inferType' ctx term = case term of
   RecDesc _ _ -> throwError "Can't infer type for descriptions"
   ArgDesc _ _ -> throwError "Can't infer type for descriptions"
 
-checkType :: Unbound v => Context v -> Term v -> Term v -> Either String ()
+checkType :: (HasCallStack, Unbound v) => Context v -> Term v -> Term v -> Either String ()
 checkType ctx term typ = checkType' ctx (Right <$> term) (Right <$> typ)
 
-checkType' :: Unbound v => Context v -> Term (Either (Term v) v)
+checkType' :: (HasCallStack, Unbound v) => Context v -> Term (Either (Term v) v)
   -> Term (Either (Term v) v) -> Either String ()
 checkType' ctx (Lambda e) (Pi t b) = do
   -- (: (lambda x x) (pi Int t Int))
@@ -203,7 +205,7 @@ checkType' ctx (Lambda e) (Pi t b) = do
   -- variable must be 't'. In pi, we instantiate with 'Right t', meaning the
   -- variable itself must
   above <- inferType' ctx t
-  checkType' ctx (instantiate1 (toTyped t) e)
+  checkType' ctx (instantiate1 t e)
                  (instantiate1 (Var $ Left above) b)
 checkType' ctx (Pair a b) (Sigma t t') = do
   checkType' ctx a t
@@ -226,12 +228,12 @@ checkType' ctx x expectedType = do
     throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
               <> "Saw:\n\t" <> show actualType
 
-toTyped :: Term (Either (Term v) v) -> Term (Either (Term v) v)
+toTyped :: (HasCallStack, Show v) => Term (Either (Term v) v) -> Term (Either (Term v) v)
 toTyped v = Var . Left $ fromRight <$> v
 
-fromRight :: Either a b -> b
+fromRight :: (HasCallStack, Show a) => Either a b -> b
 fromRight (Right x) = x
-fromRight _ = error "Not right"
+fromRight (Left e) = error $ "Not right:  " ++ show e
 {-
 ------------------------------------------------------------------------------
 -- Bibliography

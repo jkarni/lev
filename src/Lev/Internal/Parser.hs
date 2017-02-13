@@ -11,27 +11,31 @@ import qualified Data.Text as T
 import Lev.Internal.Expr
 
 exprP :: (Monad m, TokenParsing m) => m (Term T.Text)
-exprP = annotationP
-    <|> typeP
-    <|> applicationP
-    <|> varP
-    <|> piP
-    <|> lambdaP
+exprP = (parensExpP <?> "list")
+    <|> (typeP <?> "type")
+    <|> (varP <?> "variable")
+
+parensExpP :: (Monad m, TokenParsing m) => m (Term T.Text)
+parensExpP = parens $ annotationP <|> piP <|> applicationP <|> lambdaP
 
 annotationP :: (Monad m, TokenParsing m) => m (Term T.Text)
-annotationP = parens $ (-:) <$> exprP <*> exprP
+annotationP = do
+  _ <- colon
+  val <- exprP
+  typ <- exprP
+  return $ val -: typ
 
 typeP :: TokenParsing m => m (Term T.Text)
 typeP = textSymbol "Type" *> pure Type
 
 applicationP :: (Monad m, TokenParsing m) => m (Term T.Text)
-applicationP = parens $ ($$) <$> exprP <*> exprP
+applicationP = ($$) <$> exprP <*> exprP
 
 varP :: (Monad m, TokenParsing m) => m (Term T.Text)
 varP = variable <$> ident identStyle
 
 piP :: (Monad m, TokenParsing m) => m (Term T.Text)
-piP = parens $ do
+piP = do
   _ <- textSymbol "pi"
   typ <- exprP
   var <- ident identStyle
@@ -39,7 +43,7 @@ piP = parens $ do
   return $ pi var typ body
 
 lambdaP :: (Monad m, TokenParsing m) => m (Term T.Text)
-lambdaP = parens $ do
+lambdaP = do
   _ <- textSymbol "lam"
   var <- ident identStyle
   body <- exprP
@@ -52,9 +56,9 @@ lambdaP = parens $ do
 
 identStyle :: TokenParsing m => IdentifierStyle m
 identStyle = IdentifierStyle
-  { _styleName = "dt identifier"
-  , _styleStart = charLiteral
-  , _styleLetter = charLiteral
+  { _styleName = "identifier"
+  , _styleStart = alphaNum
+  , _styleLetter = alphaNum
   , _styleReserved = []
   , _styleHighlight = Identifier
   , _styleReservedHighlight = ReservedIdentifier

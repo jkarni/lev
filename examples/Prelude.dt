@@ -1,6 +1,4 @@
-(: identity
- (pi (: t Type)
-     (-> t t)))
+(: identity (pi Type t (pi t x t)))
 (= identity
  (lambda t
   (lambda i i)))

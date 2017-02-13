@@ -1,4 +1,4 @@
-module Dt (main) where
+module Main (main) where
 
 import GHC.Generics        (Generic)
 import Lev

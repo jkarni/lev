@@ -47,6 +47,7 @@ default-extensions:
   - KindSignatures
   - MultiParamTypeClasses
   - OverloadedStrings
+  - StandaloneDeriving
   - RankNTypes
   - ScopedTypeVariables
   - TypeFamilies

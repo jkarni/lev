@@ -49,6 +49,13 @@ inferTypeSpec = describe "inferType" $ do
   it "infers the type of Tag" $ do
     infers TagType Type
 
+  it "infers the type of Unquote" $ do
+    let fn  = lambda "x" (Var "x")
+        typ = pi "t" Type (Var "t")
+        v   = Type
+    infers (Unquote (Pair Type UnitValue)) Type
+    infers (Unquote (Pair (fn -: typ) v)) Type
+
 checkTypeSpec :: Spec
 checkTypeSpec = describe "checkType" $ do
 

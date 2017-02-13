@@ -1,5 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# OPTIONS_GHC -ddump-splices #-}
+
 module Lev.Internal.Expr where
 
 import Bound
@@ -14,7 +16,6 @@ import GHC.Stack            (HasCallStack)
 import qualified Data.Map  as Map
 import qualified Data.Text as T
 
-import Debug.Trace
 ------------------------------------------------------------------------------
 -- * Unbound
 ------------------------------------------------------------------------------
@@ -40,12 +41,15 @@ data Term a
   | Type                              -- Type
   | Application (Term a) (Term a)     -- (fn val)
   | Var a                             -- x
-  | Pi (Term a) (Scope () Term a)     -- (Pi X x x)
+  | Pi (Term a) (Scope () Term a)     -- (pi X x x)
   | Sigma (Term a) (Scope () Term a)  -- (Sigma X x x)
   | UnitType                          -- Unit
   | UnitValue                         -- ()
   | Tag T.Text                        -- #Zero
   | TagType                           -- Tag
+
+  -- Macros
+  | Unquote (Term a)
 
   --- Description
   | Description (Term a)
@@ -99,6 +103,14 @@ variable = Var
 (-:) :: Term a -> Term a -> Term a
 (-:) = Annotation
 
+unquote :: Term a -> Term a
+unquote p@(Pair _ _) = foldl1 Application $ unfoldPair p
+  where
+    unfoldPair (Pair a b) = a : unfoldPair b
+    unfoldPair UnitValue = []
+    unfoldPair x = [x]
+unquote x = x
+
 
 
 ------------------------------------------------------------------------------
@@ -141,6 +153,7 @@ nf (EndDesc x) = EndDesc $ nf x
 nf (RecDesc x y) = RecDesc (nf x) (nf y)
 nf (ArgDesc x y) = ArgDesc (nf x) (nf y)
 nf (Tag x) = Tag x
+nf (Unquote x) = nf $ unquote x
 
 
 ------------------------------------------------------------------------------
@@ -187,6 +200,12 @@ inferType' ctx term = case term of
   Description x -> do
     checkType' ctx x Type
     return Type
+  Unquote (Pair x UnitValue) -> inferType' ctx x
+  Unquote p -> do
+    -- "Unquote" takes an n-tuple and treats it as an n-ary application. For
+    -- example, if we have "Unquote '(fn x y)", the type is the same as just
+    -- "(fn x y)".
+    inferType' ctx $ unquote p
 
   Lambda _    -> throwError "Can't infer type for lambdas"
   Pair _ _    -> throwError "Can't infer type for pairs"
@@ -217,16 +236,26 @@ checkType' ctx (RecDesc a b) (Description typ) = do
 checkType' ctx (ArgDesc a b) d@(Description _) = do
   checkType' ctx a Type
   checkType' ctx b (fnType a d)
+{-checkType' ctx (Unquote (Pair fn arg)) typ -> do-}
+    {--- "Unquote" takes an n-tuple and treats it as an n-ary application. For-}
+    {--- example, if we have "Unquote '(fn x y)", the type is the same as just-}
+    {--- "(fn x y)". The n-ary case is easy to reduce to pairs.-}
+    {-argType <- inferType' ctx arg-}
+    {-checkType' ctx fn (Pi t b)-}
+    {-case typ of-}
+      {-Sigma typ' binding-}
 checkType' ctx x (Var (Left expectedType)) = do
   actualType <- inferType' ctx x
   when (actualType /= expectedType) $
     throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
               <> "\nSaw:\n\t" <> show actualType
+              <> "\nIn:\n\t" <> show x
 checkType' ctx x expectedType = do
   actualType <- inferType' ctx x
   when ((Right <$> actualType) /= expectedType) $
     throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
               <> "\nSaw:\n\t" <> show actualType
+              <> "\nIn:\n\t" <> show x
 
 toTyped :: (HasCallStack, Show v) => Term (Either (Term v) v) -> Term (Either (Term v) v)
 toTyped v = Var . Left $ fromRight <$> v

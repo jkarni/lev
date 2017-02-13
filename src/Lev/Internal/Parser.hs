@@ -42,6 +42,7 @@ signatureP = parens $ do
 ------------------------------------------------------------------------------
 exprP :: (Monad m, TokenParsing m) => m (Term T.Text)
 exprP = (parensExpP <?> "list")
+    <|> (tupleP <?> "tuple")
     <|> (typeP <?> "type")
     <|> (unitTypeP <?> "unit type")
     <|> (varP <?> "variable")
@@ -51,13 +52,14 @@ parensExpP = parens
     $ (annotationP <?> "annotation")
   <|> (piP <?> "pi")
   <|> (lambdaP <?> "lambda")
+  <|> (unquoteP <?> "unquote")
   <|> (applicationP <?> "application")
   <|> (unitValueP <?> "unit value")
 
 unitTypeP ::(Monad m, TokenParsing m) => m (Term T.Text)
 unitTypeP = textSymbol "Unit" *> pure UnitType
 
-unitValueP :: (Monad m, TokenParsing m) => m (Term T.Text)
+unitValueP :: (Monad m) => m (Term T.Text)
 unitValueP = return UnitValue
 
 annotationP :: (Monad m, TokenParsing m) => m (Term T.Text)
@@ -71,7 +73,10 @@ typeP :: TokenParsing m => m (Term T.Text)
 typeP = textSymbol "Type" *> pure Type
 
 applicationP :: (Monad m, TokenParsing m) => m (Term T.Text)
-applicationP = ($$) <$> exprP <*> exprP
+applicationP = do
+  fn <- exprP
+  args <- some exprP
+  return $ foldl Application fn args
 
 varP :: (Monad m, TokenParsing m) => m (Term T.Text)
 varP = variable <$> ident identStyle
@@ -91,6 +96,28 @@ lambdaP = do
   body <- exprP
   return $ lambda var body
 
+sigmaP :: (Monad m, TokenParsing m) => m (Term T.Text)
+sigmaP = do
+  _ <- textSymbol "sigma"
+  typ <- exprP
+  var <- ident identStyle
+  body <- exprP
+  return $ sigma var typ body
+
+-- Ultimately parsed into nested pairs (i.e., a heterogenous list)
+tupleP :: (Monad m, TokenParsing m) => m (Term T.Text)
+tupleP = do
+  _ <- char '\''
+  parens $ do
+    members <- some exprP
+    return $ foldr Pair UnitValue members
+
+unquoteP :: (Monad m, TokenParsing m) => m (Term T.Text)
+unquoteP = do
+  _ <- textSymbol "unquote"
+  t <- tupleP
+  return $ Unquote t
+
 
 ------------------------------------------------------------------------------
 -- Identifiers
@@ -99,9 +126,9 @@ lambdaP = do
 identStyle :: TokenParsing m => IdentifierStyle m
 identStyle = IdentifierStyle
   { _styleName = "identifier"
-  , _styleStart = alphaNum
-  , _styleLetter = alphaNum
-  , _styleReserved = []
+  , _styleStart = noneOf "()"
+  , _styleLetter = alphaNum -- noneOf "()"
+  , _styleReserved = ["lam", "pi", "sigma", "unquote", ":"]
   , _styleHighlight = Identifier
   , _styleReservedHighlight = ReservedIdentifier
   }

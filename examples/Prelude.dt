@@ -1,7 +1,13 @@
-(: identity (pi Type t (pi t x t)))
+(: identity (pi Type t (pi t _ t)))
 (= identity
  (lam t
   (lam i i)))
 
-(: main (pi Type x Type))
-(= main (identity Type))
+(: to (pi Type _ (pi Type _ Type)))
+(= to
+ (lam arg
+  (lam ret
+   (pi arg _ ret))))
+
+(: main (pi Type _ Type))
+(= main (unquote '(identity Type)))

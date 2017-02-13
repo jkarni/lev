@@ -1,21 +1,19 @@
 # lev
 
-TODO: Write description here
+A toy language for playing around with macros and generic constructors in a
+dependently-typed setting.
 
-## Installation
-
-TODO: Write installation instructions here
+Distinctly not finished.
 
 ## Usage
 
-TODO: Write usage instructions here
-
-## How to run tests
-
 ```
-cabal configure --enable-tests && cabal build && cabal test
+Usage: dt FILE [-P|--parse-only] [-T|--typecheck-only] [-E|--as-expression]
+  The dt interpreter
+
+Available options:
+  -h,--help                Show this help text
+  -P,--parse-only          Just parse file and report errors
+  -T,--typecheck-only      Just parse file and report errors
+  -E,--as-expression       Evaluate file as single expression
 ```
-
-## Contributing
-
-TODO: Write contribution instructions here

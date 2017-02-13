@@ -46,6 +46,7 @@ library
   exposed-modules:
       Lev
       Lev.Internal
+      Lev.Internal.Decl
       Lev.Internal.Expr
       Lev.Internal.Parser
   default-language: Haskell2010

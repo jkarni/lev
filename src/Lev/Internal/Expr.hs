@@ -4,12 +4,10 @@ module Lev.Internal.Expr where
 
 import Bound
 import Control.Monad.Except
-import Control.Monad.State
 import Data.Deriving        (deriveEq1, deriveOrd1, deriveRead1, deriveShow1)
 import Data.Functor.Classes
 import Data.Monoid
 import Data.String
-import Data.Void
 import GHC.Generics         (Generic)
 
 import qualified Data.Map  as Map
@@ -99,14 +97,6 @@ variable = Var
 (-:) = Annotation
 
 
-------------------------------------------------------------------------------
--- * Environment
-------------------------------------------------------------------------------
-
-newtype Environment v a = Environment
-  { getEnv :: ExceptT String (State (Map.Map v (Term Void))) a }
-  deriving ( Functor, Applicative, Monad, MonadError String
-           , MonadState (Map.Map v (Term Void)))
 
 ------------------------------------------------------------------------------
 -- * Context
@@ -149,18 +139,6 @@ nf (RecDesc x y) = RecDesc (nf x) (nf y)
 nf (ArgDesc x y) = ArgDesc (nf x) (nf y)
 nf (Tag x) = Tag x
 
--- | Resolve all free variables by looking them up in the environment.
--- Currently fails by burning.
-resolve :: (Ord a, Show a) => Term a -> Environment a (Term Void)
-resolve x = do
-  env <- get
-  let force y = case closed y of
-        Nothing -> error "Should not happen"
-        Just v  -> v
-  let resolved = instantiate (\y -> case Map.lookup y env of
-        Nothing -> error "Could not find variable"
-        Just z  -> force z) $ abstract Just x
-  return $ force resolved
 
 ------------------------------------------------------------------------------
 -- * Type checking

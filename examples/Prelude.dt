@@ -1,4 +1,4 @@
 (: identity (pi Type t (pi t x t)))
 (= identity
- (lambda t
-  (lambda i i)))
+ (lam t
+  (lam i i)))

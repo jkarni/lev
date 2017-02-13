@@ -9,8 +9,10 @@ main = execParser fullOpts >>= run
 
 run :: Options -> IO ()
 run opts
-  | parseOnly opts = parseFile (file opts) >>= print
-  | otherwise = error "not implemented"
+  | parseOnly opts && evalExpression opts
+      = parseExpressionFromFile (file opts) >>= print
+  | parseOnly opts
+      = parseProgramFromFile (file opts) >>= print
 
 ------------------------------------------------------------------------------
 -- Options

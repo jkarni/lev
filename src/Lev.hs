@@ -1,11 +1,11 @@
 module Lev where
 
+import GHC.Stack     (HasCallStack)
 import Lev.Internal
+import System.IO     (stdout)
 import Text.Trifecta
-import System.IO (stdout)
-import GHC.Stack (HasCallStack)
 
-import qualified Data.Text as T
+import qualified Data.Text                    as T
 import qualified Text.PrettyPrint.ANSI.Leijen as Doc
 
 -- | Parse a file as a single expression.

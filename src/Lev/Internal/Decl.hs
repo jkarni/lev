@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 module Lev.Internal.Decl where
 
-import Control.Lens         ((^.), makeFields)
+import Control.Lens         (makeFields, (^.))
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Foldable        (find)

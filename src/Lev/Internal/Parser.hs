@@ -8,8 +8,8 @@ import Text.Trifecta
 
 import qualified Data.Text as T
 
-import Lev.Internal.Expr
 import Lev.Internal.Decl
+import Lev.Internal.Expr
 
 
 ------------------------------------------------------------------------------

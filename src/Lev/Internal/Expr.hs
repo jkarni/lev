@@ -19,6 +19,7 @@ import qualified Data.Text as T
 class (Ord a, Show a) => Unbound a where
   unbound :: a
 instance Unbound String where unbound = "_"
+instance Unbound T.Text where unbound = "_"
 instance Unbound v => Unbound (Either (Term v) v)  where unbound = Right unbound
 
 

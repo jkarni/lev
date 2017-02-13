@@ -7,6 +7,7 @@ import System.IO (stdout)
 import qualified Data.Text as T
 import qualified Text.PrettyPrint.ANSI.Leijen as Doc
 
+-- | Parse a file as a single expression.
 parseExpressionFromFile :: FilePath -> IO (Term T.Text)
 parseExpressionFromFile fp = do
   result <- parseFromFileEx exprP fp
@@ -16,8 +17,9 @@ parseExpressionFromFile fp = do
       error "Failed"
     Success a  -> return a
 
-parseProgramFromFile :: FilePath -> IO (Program T.Text)
-parseProgramFromFile fp = do
+-- | Parse a file as a full program.
+parseFile :: FilePath -> IO (Program T.Text)
+parseFile fp = do
   result <- parseFromFileEx programP fp
   case result of
     Failure x -> do
@@ -25,12 +27,10 @@ parseProgramFromFile fp = do
       error "Failed"
     Success a  -> return a
 
-{-typeCheckFile :: FilePath -> IO (Maybe (Term T.Text, Term T.Text))-}
-{-typeCheckFile fp = do-}
-  {-x <- parseFile fp-}
-  {-case x of-}
-    {-Nothing -> Nothing-}
-    {-Just v -> case-}
-
-{-evalExprFile :: FilePath -> IO (Term T.Text)-}
-{-evalExprFile = _-}
+-- | Type check a file in the empty environment (no imports).
+typeCheckFile :: FilePath -> IO ()
+typeCheckFile fp = do
+  parsedProg <- parseFile fp
+  case runEnvironment $ typeCheckProgram parsedProg of
+    Left e -> error e
+    Right () -> return ()

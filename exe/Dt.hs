@@ -12,7 +12,9 @@ run opts
   | parseOnly opts && evalExpression opts
       = parseExpressionFromFile (file opts) >>= print
   | parseOnly opts
-      = parseProgramFromFile (file opts) >>= print
+      = parseFile (file opts) >>= print
+  | typeCheckOnly opts
+      = typeCheckFile (file opts)
 
 ------------------------------------------------------------------------------
 -- Options
@@ -29,12 +31,17 @@ options :: Parser Options
 options = Options
   <$> argument str (metavar "FILE")
   <*> switch
-       ( long "parse"
+       ( long "parse-only"
       <> short 'P'
       <> help "Just parse file and report errors"
        )
   <*> switch
-       ( long "expr"
+       ( long "typecheck-only"
+      <> short 'T'
+      <> help "Just parse file and report errors"
+       )
+  <*> switch
+       ( long "as-expression"
       <> short 'E'
       <> help "Evaluate file as single expression"
        )
@@ -42,5 +49,6 @@ options = Options
 data Options = Options
   { file           :: FilePath
   , parseOnly      :: Bool
+  , typeCheckOnly  :: Bool
   , evalExpression :: Bool
   } deriving (Eq, Show, Read, Generic)

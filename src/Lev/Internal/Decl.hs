@@ -59,11 +59,11 @@ newtype Environment v a = Environment
   deriving ( Functor, Applicative, Monad, MonadError String
            , MonadState (Map.Map v (Term v)))
 
-emptyEnvironment :: Environment v ()
-emptyEnvironment = return ()
-
 addTermType :: Unbound v => v -> Term v -> Environment v ()
 addTermType name typ = modify (Map.insert name typ)
+
+runEnvironment :: Environment v a -> Either String a
+runEnvironment (Environment e) = evalState (runExceptT e) Map.empty
 
 {-
 -- | Resolve all free variables by looking them up in the environment.

@@ -26,22 +26,35 @@ parseExprSpec = describe "exprP" $ do
       vx = Var "x"
       vy = Var "y"
 
-  it "parses variables" $ "x" `parsesAs` vx
+  it "parses variables" $
+    "x" `parsesAs` vx
 
-  it "parses annotations" $ "(: x y)" `parsesAs` Annotation vx vy
+  it "parses annotations" $
+    "(: x y)" `parsesAs` Annotation vx vy
 
-  it "parses Unit" $ "()" `parsesAs` UnitValue
+  it "parses Unit" $
+    "()" `parsesAs` UnitValue
 
-  it "parses UnitType" $ "Unit" `parsesAs` UnitType
+  it "parses UnitType" $
+    "Unit" `parsesAs` UnitType
 
-  it "parses Type" $ "Type" `parsesAs` Type
+  it "parses Type" $
+    "Type" `parsesAs` Type
 
-  it "parses Pi" $ "(pi Type x y)" `parsesAs` pi "x" Type vy
+  it "parses Pi" $
+    "(pi Type x y)" `parsesAs` pi "x" Type vy
 
-  it "parses lambdas" $ "(lam x x)" `parsesAs` lambda "x" vx
+  it "parses lambdas" $
+    "(lam x x)" `parsesAs` lambda "x" vx
 
-  it "parses singletons" $ "'(x)" `parsesAs` Pair vx UnitValue
+  it "parses singletons" $
+    "'(x)" `parsesAs` Pair vx UnitValue
 
-  it "parses pairs" $ "'(x y)" `parsesAs` Pair vx (Pair vy UnitValue)
+  it "parses pairs" $
+    "'(x y)" `parsesAs` Pair vx (Pair vy UnitValue)
 
-  it "parses tuples" $ "'(x y x)" `parsesAs` Pair vx (Pair vy (Pair vx UnitValue))
+  it "parses tuples" $
+    "'(x y x)" `parsesAs` Pair vx (Pair vy (Pair vx UnitValue))
+
+  it "parses applications" $
+    "(fn x y)" `parsesAs` Application (Application (Var "fn") vx) vy

@@ -3,8 +3,8 @@ module Lev where
 import qualified Data.Text as T
 import GHC.Stack (HasCallStack)
 import Lev.Internal
+import Prettyprinter (pretty)
 import Prettyprinter.Render.Terminal (putDoc)
-import System.IO (stdout)
 import Text.Trifecta
 
 -- | Parse a file as a single expression.
@@ -40,4 +40,4 @@ evalFile fp = do
   parsedProg <- parseFile fp
   case runEnvironment $ evaluateProgram parsedProg of
     Left e -> error e
-    Right v -> print v
+    Right v -> putDoc $ pretty v

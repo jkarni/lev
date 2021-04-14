@@ -18,21 +18,21 @@ extra-source-files:
 ghc-options: -Wall
 
 dependencies:
-  - base >= 4.7 && < 4.10
-  - bound >= 2 && < 3
-  - bound-gen >= 0.1 && < 0.2
-  - deriving-compat >= 0.3 && < 0.4
-  - containers >= 0.5 && < 0.6
-  - mtl >= 2 && < 3
-  - monad-gen >= 0.3 && < 0.4
-  - lens >= 4 && < 5
-  - text >= 1.2 && < 2
-  - trifecta >= 1.6 && < 2
-  - parsers >= 0.12 && < 0.13
-  - ansi-wl-pprint >= 0.6 && < 0.7
+  - base
+  - bound
+  - bound-gen
+  - deriving-compat
+  - containers
+  - mtl
+  - monad-gen
+  - lens
+  - text
+  - trifecta
+  - parsers
+  - prettyprinter
+  - prettyprinter-ansi-terminal
 
 default-extensions:
-  - AutoDeriveTypeable
   - ConstraintKinds
   - DataKinds
   - DefaultSignatures
@@ -62,8 +62,8 @@ tests:
     main:            Spec.hs
     source-dirs:     test
     dependencies:
-      - hspec > 2 && < 3
-      - QuickCheck >= 2.8 && < 2.9
+      - hspec
+      - QuickCheck
       - lev
 
 executables:
@@ -71,6 +71,6 @@ executables:
     main:            Dt.hs
     source-dirs:     exe
     dependencies:
-      - QuickCheck >= 2.8 && < 2.9
+      - QuickCheck
       - optparse-applicative
       - lev

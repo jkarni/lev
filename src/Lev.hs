@@ -1,12 +1,11 @@
 module Lev where
 
-import GHC.Stack     (HasCallStack)
+import qualified Data.Text as T
+import GHC.Stack (HasCallStack)
 import Lev.Internal
-import System.IO     (stdout)
+import Prettyprinter.Render.Terminal (putDoc)
+import System.IO (stdout)
 import Text.Trifecta
-
-import qualified Data.Text                    as T
-import qualified Text.PrettyPrint.ANSI.Leijen as Doc
 
 -- | Parse a file as a single expression.
 parseExpressionFromFile :: (HasCallStack) => FilePath -> IO (Term T.Text)
@@ -14,9 +13,9 @@ parseExpressionFromFile fp = do
   result <- parseFromFileEx exprP fp
   case result of
     Failure x -> do
-      Doc.displayIO stdout $ Doc.renderPretty 0.8 80 $ _errDoc x
+      putDoc $ _errDoc x
       error "Failed"
-    Success a  -> return a
+    Success a -> return a
 
 -- | Parse a file as a full program.
 parseFile :: (HasCallStack) => FilePath -> IO (Program T.Text)
@@ -24,9 +23,9 @@ parseFile fp = do
   result <- parseFromFileEx programP fp
   case result of
     Failure x -> do
-      Doc.displayIO stdout $ Doc.renderPretty 0.8 80 $ _errDoc x
+      putDoc $ _errDoc x
       error "Failed"
-    Success a  -> return a
+    Success a -> return a
 
 -- | Type check a file in the empty environment (no imports).
 typeCheckFile :: (HasCallStack) => FilePath -> IO (Program T.Text)

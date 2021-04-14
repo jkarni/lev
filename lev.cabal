@@ -1,4 +1,6 @@
--- This file has been generated from package.yaml by hpack version 0.15.0.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -16,8 +18,6 @@ license:                BSD3
 license-file:           LICENSE
 tested-with:            GHC == 8.0.1
 build-type:             Simple
-cabal-version:          >= 1.10
-
 extra-source-files:
     package.yaml
 
@@ -28,51 +28,56 @@ source-repository head
 library
   hs-source-dirs:
       src
-  default-extensions: AutoDeriveTypeable ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes ScopedTypeVariables TypeFamilies TypeOperators
+  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes ScopedTypeVariables TypeFamilies TypeOperators
   ghc-options: -Wall
   build-depends:
-      base >= 4.7 && < 4.10
-    , bound >= 2 && < 3
-    , bound-gen >= 0.1 && < 0.2
-    , deriving-compat >= 0.3 && < 0.4
-    , containers >= 0.5 && < 0.6
-    , mtl >= 2 && < 3
-    , monad-gen >= 0.3 && < 0.4
-    , lens >= 4 && < 5
-    , text >= 1.2 && < 2
-    , trifecta >= 1.6 && < 2
-    , parsers >= 0.12 && < 0.13
-    , ansi-wl-pprint >= 0.6 && < 0.7
+      base
+    , bound
+    , bound-gen
+    , containers
+    , deriving-compat
+    , lens
+    , monad-gen
+    , mtl
+    , parsers
+    , prettyprinter
+    , prettyprinter-ansi-terminal
+    , text
+    , trifecta
   exposed-modules:
       Lev
       Lev.Internal
       Lev.Internal.Decl
       Lev.Internal.Expr
       Lev.Internal.Parser
+      Lev.Internal.Pretty
   default-language: Haskell2010
 
 executable dt
   main-is: Dt.hs
+  other-modules:
+      Paths_lev
   hs-source-dirs:
       exe
-  default-extensions: AutoDeriveTypeable ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes ScopedTypeVariables TypeFamilies TypeOperators
+  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes ScopedTypeVariables TypeFamilies TypeOperators
   ghc-options: -Wall
   build-depends:
-      base >= 4.7 && < 4.10
-    , bound >= 2 && < 3
-    , bound-gen >= 0.1 && < 0.2
-    , deriving-compat >= 0.3 && < 0.4
-    , containers >= 0.5 && < 0.6
-    , mtl >= 2 && < 3
-    , monad-gen >= 0.3 && < 0.4
-    , lens >= 4 && < 5
-    , text >= 1.2 && < 2
-    , trifecta >= 1.6 && < 2
-    , parsers >= 0.12 && < 0.13
-    , ansi-wl-pprint >= 0.6 && < 0.7
-    , QuickCheck >= 2.8 && < 2.9
-    , optparse-applicative
+      QuickCheck
+    , base
+    , bound
+    , bound-gen
+    , containers
+    , deriving-compat
+    , lens
     , lev
+    , monad-gen
+    , mtl
+    , optparse-applicative
+    , parsers
+    , prettyprinter
+    , prettyprinter-ansi-terminal
+    , text
+    , trifecta
   default-language: Haskell2010
 
 test-suite spec
@@ -80,25 +85,27 @@ test-suite spec
   main-is: Spec.hs
   hs-source-dirs:
       test
-  default-extensions: AutoDeriveTypeable ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes ScopedTypeVariables TypeFamilies TypeOperators
+  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes ScopedTypeVariables TypeFamilies TypeOperators
   ghc-options: -Wall
   build-depends:
-      base >= 4.7 && < 4.10
-    , bound >= 2 && < 3
-    , bound-gen >= 0.1 && < 0.2
-    , deriving-compat >= 0.3 && < 0.4
-    , containers >= 0.5 && < 0.6
-    , mtl >= 2 && < 3
-    , monad-gen >= 0.3 && < 0.4
-    , lens >= 4 && < 5
-    , text >= 1.2 && < 2
-    , trifecta >= 1.6 && < 2
-    , parsers >= 0.12 && < 0.13
-    , ansi-wl-pprint >= 0.6 && < 0.7
-    , hspec > 2 && < 3
-    , QuickCheck >= 2.8 && < 2.9
+      QuickCheck
+    , base
+    , bound
+    , bound-gen
+    , containers
+    , deriving-compat
+    , hspec
+    , lens
     , lev
+    , monad-gen
+    , mtl
+    , parsers
+    , prettyprinter
+    , prettyprinter-ansi-terminal
+    , text
+    , trifecta
   other-modules:
       Lev.Internal.ExprSpec
-      Lev.Internal.ParserSpec
+      Lev.Internal.PPSpec
+      Paths_lev
   default-language: Haskell2010

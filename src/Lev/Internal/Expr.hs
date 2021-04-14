@@ -1,32 +1,34 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# OPTIONS_GHC -ddump-splices #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Lev.Internal.Expr where
 
 import Bound
 import Control.Monad.Except
-import Data.Deriving        (deriveEq1, deriveOrd1, deriveRead1, deriveShow1)
+import Data.Deriving (deriveEq1, deriveOrd1, deriveRead1, deriveShow1)
 import Data.Functor.Classes
-import Data.Monoid
+import qualified Data.Map as Map
 import Data.String
-import GHC.Generics         (Generic)
-import GHC.Stack            (HasCallStack)
-
-import qualified Data.Map  as Map
 import qualified Data.Text as T
+import GHC.Generics (Generic)
+import GHC.Stack (HasCallStack)
 
 ------------------------------------------------------------------------------
+
 -- * Unbound
 ------------------------------------------------------------------------------
+
 class (Ord a, Show a) => Unbound a where
   unbound :: a
-instance Unbound String where unbound = "_"
-instance Unbound T.Text where unbound = "_"
-instance Unbound v => Unbound (Either (Term v) v)  where unbound = Right unbound
 
+instance Unbound String where unbound = "_"
+
+instance Unbound T.Text where unbound = "_"
+
+instance Unbound v => Unbound (Either (Term v) v) where unbound = Right unbound
 
 ------------------------------------------------------------------------------
+
 -- * Terms
 ------------------------------------------------------------------------------
 
@@ -35,48 +37,52 @@ instance Unbound v => Unbound (Either (Term v) v)  where unbound = Right unbound
 -- 'bound' doesn't allow mutually recursive types, so all types (inferrable,
 -- checkable, description) are folded in.
 data Term a
-
-  -- Inferrable
-  = Annotation (Term a) (Term a)      -- (: val typ)
-  | Type                              -- Type
-  | Application (Term a) (Term a)     -- (fn val)
-  | Var a                             -- x
-  | Pi (Term a) (Scope () Term a)     -- (pi X x x)
-  | Sigma (Term a) (Scope () Term a)  -- (Sigma X x x)
-  | UnitType                          -- Unit
-  | UnitValue                         -- ()
-  | Tag T.Text                        -- #Zero
-  | TagType                           -- Tag
-
-  -- Macros
+  = -- Inferrable
+    Annotation (Term a) (Term a) -- (: val typ)
+  | Type -- Type
+  | Application (Term a) (Term a) -- (fn val)
+  | Var a -- x
+  | Pi (Term a) (Scope () Term a) -- (pi X x x)
+  | Sigma (Term a) (Scope () Term a) -- (Sigma X x x)
+  | UnitType -- Unit
+  | UnitValue -- ()
+  | Tag T.Text -- #Zero
+  | TagType -- Tag
+    -- Macros
   | Unquote (Term a)
-
-  --- Description
-  | Description (Term a)
+  | --- Description
+    Description (Term a)
   | EndDesc (Term a)
   | RecDesc (Term a) (Term a)
   | ArgDesc (Term a) (Term a)
-
-  -- Checkable
-  | Pair (Term a) (Term a)            -- '(x y)
-  | Lambda (Scope () Term a)          -- (lam x x)
+  | -- Checkable
+    Pair (Term a) (Term a) -- '(x y)
+  | Lambda (Scope () Term a) -- (lam x x)
   deriving (Functor, Foldable, Traversable, Generic)
 
-makeBound   ''Term
-deriveEq1   ''Term
-deriveOrd1  ''Term
+makeBound ''Term
+
+deriveEq1 ''Term
+
+deriveOrd1 ''Term
+
 deriveShow1 ''Term
+
 deriveRead1 ''Term
+
 instance Show a => Show (Term a) where showsPrec = showsPrec1
+
 instance Read a => Read (Term a) where readsPrec = readsPrec1
-instance Eq   a => Eq   (Term a) where (==)      = eq1
-instance Ord  a => Ord  (Term a) where compare   = compare1
+
+instance Eq a => Eq (Term a) where (==) = eq1
+
+instance Ord a => Ord (Term a) where compare = compare1
 
 instance IsString a => IsString (Term a) where
   fromString = Var . fromString
 
-
 ------------------------------------------------------------------------------
+
 -- ** Helpers
 
 pi :: Eq a => a -> Term a -> Term a -> Term a
@@ -111,13 +117,12 @@ unquote p@(Pair _ _) = foldl1 Application $ unfoldPair p
     unfoldPair x = [x]
 unquote x = x
 
-
-
 ------------------------------------------------------------------------------
+
 -- * Context
 ------------------------------------------------------------------------------
 
-newtype Context v = Context { getCtx :: Map.Map v (Term v) }
+newtype Context v = Context {getCtx :: Map.Map v (Term v)}
   deriving (Eq, Show, Ord, Generic)
 
 emptyCtx :: Context v
@@ -129,8 +134,8 @@ lookupCtx v (Context ctx) = Map.lookup v ctx
 extendCtx :: Ord v => v -> Term v -> Context v -> Context v
 extendCtx var typ (Context ctx) = Context $ Map.insert var typ ctx
 
-
 ------------------------------------------------------------------------------
+
 -- * Evaluation
 ------------------------------------------------------------------------------
 
@@ -139,7 +144,7 @@ nf (Annotation e y) = Annotation (nf e) (nf y)
 nf Type = Type
 nf (Application fn val) = case nf fn of
   Lambda x -> nf (instantiate1 val x)
-  fn'      -> Application fn' (nf val)
+  fn' -> Application fn' (nf val)
 nf (Var x) = Var x
 nf (Lambda x) = Lambda $ toScope $ nf $ fromScope x
 nf (Pi typ x) = Pi (nf typ) (toScope $ nf $ fromScope x)
@@ -155,8 +160,8 @@ nf (ArgDesc x y) = ArgDesc (nf x) (nf y)
 nf (Tag x) = Tag x
 nf (Unquote x) = nf $ unquote x
 
-
 ------------------------------------------------------------------------------
+
 -- * Type checking
 ------------------------------------------------------------------------------
 -- We use "Either (Term v) v" for variable type, indicating that it is either a
@@ -170,7 +175,7 @@ inferType' :: (HasCallStack, Unbound v) => Context v -> Term (Either (Term v) v)
 inferType' ctx term = case term of
   Annotation e an -> do
     checkType' ctx an Type
-    checkType' ctx e  an
+    checkType' ctx e an
     return $ fromRight <$> an
   Application fn val -> do
     fnType' <- inferType' ctx fn
@@ -181,9 +186,9 @@ inferType' ctx term = case term of
       _ -> throwError "Application of non-function type"
   Var (Left e) -> do
     return e -- local variable
-  Var (Right x) -> case lookupCtx x ctx of  -- global variable
+  Var (Right x) -> case lookupCtx x ctx of -- global variable
     Nothing -> throwError $ "Unknown identifier: " ++ show x
-    Just v  -> return v
+    Just v -> return v
   Pi typ binding -> do
     checkType' ctx typ Type
     checkType' ctx (instantiate1 Type binding) Type
@@ -192,11 +197,11 @@ inferType' ctx term = case term of
     checkType' ctx typ Type
     checkType' ctx (instantiate1 Type binding) Type
     return Type
-  Type      -> return Type
-  UnitType  -> return Type
+  Type -> return Type
+  UnitType -> return Type
   UnitValue -> return UnitType
-  Tag _     -> return TagType
-  TagType   -> return Type
+  Tag _ -> return TagType
+  TagType -> return Type
   Description x -> do
     checkType' ctx x Type
     return Type
@@ -206,26 +211,30 @@ inferType' ctx term = case term of
     -- example, if we have "Unquote '(fn x y)", the type is the same as just
     -- "(fn x y)".
     inferType' ctx $ unquote p
-
-  Lambda _    -> throwError "Can't infer type for lambdas"
-  Pair _ _    -> throwError "Can't infer type for pairs"
-  EndDesc _   -> throwError "Can't infer type for descriptions"
+  Lambda _ -> throwError "Can't infer type for lambdas"
+  Pair _ _ -> throwError "Can't infer type for pairs"
+  EndDesc _ -> throwError "Can't infer type for descriptions"
   RecDesc _ _ -> throwError "Can't infer type for descriptions"
   ArgDesc _ _ -> throwError "Can't infer type for descriptions"
 
 checkType :: (HasCallStack, Unbound v) => Context v -> Term v -> Term v -> Either String ()
 checkType ctx term typ = checkType' ctx (Right <$> term) (Right <$> typ)
 
-checkType' :: (HasCallStack, Unbound v) => Context v -> Term (Either (Term v) v)
-  -> Term (Either (Term v) v) -> Either String ()
+checkType' ::
+  (HasCallStack, Unbound v) =>
+  Context v ->
+  Term (Either (Term v) v) ->
+  Term (Either (Term v) v) ->
+  Either String ()
 checkType' ctx (Lambda e) (Pi t b) = do
   -- (: (lambda x x) (pi Int t Int))
   -- In the lambda we instantiate with 'Left t', meaning the *type* of the
   -- variable must be 't'. In pi, we instantiate with 'Right t', meaning the
   -- variable itself must
-  above <- inferType' ctx t
-  checkType' ctx (instantiate1 t e)
-                 (instantiate1 (Var $ Left above) b)
+  checkType'
+    ctx
+    (instantiate1 (toTyped t) e)
+    (instantiate1 t b)
 checkType' ctx (Pair a b) (Sigma t t') = do
   checkType' ctx a t
   checkType' ctx b (instantiate1 t t')
@@ -237,25 +246,27 @@ checkType' ctx (ArgDesc a b) d@(Description _) = do
   checkType' ctx a Type
   checkType' ctx b (fnType a d)
 {-checkType' ctx (Unquote (Pair fn arg)) typ -> do-}
-    {--- "Unquote" takes an n-tuple and treats it as an n-ary application. For-}
-    {--- example, if we have "Unquote '(fn x y)", the type is the same as just-}
-    {--- "(fn x y)". The n-ary case is easy to reduce to pairs.-}
-    {-argType <- inferType' ctx arg-}
-    {-checkType' ctx fn (Pi t b)-}
-    {-case typ of-}
-      {-Sigma typ' binding-}
-checkType' ctx x (Var (Left expectedType)) = do
-  actualType <- inferType' ctx x
-  when (actualType /= expectedType) $
-    throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
-              <> "\nSaw:\n\t" <> show actualType
-              <> "\nIn:\n\t" <> show x
+{--- "Unquote" takes an n-tuple and treats it as an n-ary application. For-}
+{--- example, if we have "Unquote '(fn x y)", the type is the same as just-}
+{--- "(fn x y)". The n-ary case is easy to reduce to pairs.-}
+{-argType <- inferType' ctx arg-}
+{-case typ of-}
+{-Sigma typ' binding-}
+checkType' ctx (Var (Left actualType)) expectedType = do
+  when ((Right <$> actualType) /= expectedType)
+    $ throwError
+    $ "Type mismatch. Expected:\n\t" <> show expectedType
+      <> "\nSaw:\n\t"
+      <> show actualType
 checkType' ctx x expectedType = do
   actualType <- inferType' ctx x
-  when ((Right <$> actualType) /= expectedType) $
-    throwError $ "Type mismatch. Expected:\n\t" <> show expectedType
-              <> "\nSaw:\n\t" <> show actualType
-              <> "\nIn:\n\t" <> show x
+  when ((Right <$> actualType) /= expectedType)
+    $ throwError
+    $ "Type mismatch. Expected:\n\t" <> show expectedType
+      <> "\nSaw:\n\t"
+      <> show actualType
+      <> "\nIn:\n\t"
+      <> show x
 
 toTyped :: (HasCallStack, Show v) => Term (Either (Term v) v) -> Term (Either (Term v) v)
 toTyped v = Var . Left $ fromRight <$> v

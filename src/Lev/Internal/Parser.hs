@@ -1,16 +1,14 @@
 {-# LANGUAGE OverloadedLists #-}
+
 module Lev.Internal.Parser where
 
 import Control.Applicative
-import Prelude                     hiding (pi)
-import Text.Parser.Token.Highlight
-import Text.Trifecta
-
 import qualified Data.Text as T
-
 import Lev.Internal.Decl
 import Lev.Internal.Expr
-
+import Text.Parser.Token.Highlight
+import Text.Trifecta
+import Prelude hiding (pi)
 
 ------------------------------------------------------------------------------
 -- Declarations
@@ -36,27 +34,28 @@ signatureP = parens $ do
   body <- exprP
   return $ Signature var body
 
-
 ------------------------------------------------------------------------------
 -- Terms
 ------------------------------------------------------------------------------
 exprP :: (Monad m, TokenParsing m) => m (Term T.Text)
-exprP = (parensExpP <?> "list")
+exprP =
+  (parensExpP <?> "list")
     <|> (tupleP <?> "tuple")
     <|> (typeP <?> "type")
     <|> (unitTypeP <?> "unit type")
     <|> (varP <?> "variable")
 
 parensExpP :: (Monad m, TokenParsing m) => m (Term T.Text)
-parensExpP = parens
-    $ (annotationP <?> "annotation")
-  <|> (piP <?> "pi")
-  <|> (lambdaP <?> "lambda")
-  <|> (unquoteP <?> "unquote")
-  <|> (applicationP <?> "application")
-  <|> (unitValueP <?> "unit value")
+parensExpP =
+  parens $
+    (annotationP <?> "annotation")
+      <|> (piP <?> "pi")
+      <|> (lambdaP <?> "lambda")
+      <|> (unquoteP <?> "unquote")
+      <|> (applicationP <?> "application")
+      <|> (unitValueP <?> "unit value")
 
-unitTypeP ::(Monad m, TokenParsing m) => m (Term T.Text)
+unitTypeP :: (Monad m, TokenParsing m) => m (Term T.Text)
 unitTypeP = textSymbol "Unit" *> pure UnitType
 
 unitValueP :: (Monad m) => m (Term T.Text)
@@ -118,17 +117,17 @@ unquoteP = do
   t <- tupleP
   return $ Unquote t
 
-
 ------------------------------------------------------------------------------
 -- Identifiers
 ------------------------------------------------------------------------------
 
 identStyle :: TokenParsing m => IdentifierStyle m
-identStyle = IdentifierStyle
-  { _styleName = "identifier"
-  , _styleStart = noneOf "()"
-  , _styleLetter = alphaNum -- noneOf "()"
-  , _styleReserved = ["lam", "pi", "sigma", "unquote", ":"]
-  , _styleHighlight = Identifier
-  , _styleReservedHighlight = ReservedIdentifier
-  }
+identStyle =
+  IdentifierStyle
+    { _styleName = "identifier",
+      _styleStart = noneOf "()",
+      _styleLetter = alphaNum, -- noneOf "()"
+      _styleReserved = ["lam", "pi", "sigma", "unquote", ":"],
+      _styleHighlight = Identifier,
+      _styleReservedHighlight = ReservedIdentifier
+    }

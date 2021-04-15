@@ -42,6 +42,7 @@ library
     , parsers
     , prettyprinter
     , prettyprinter-ansi-terminal
+    , string-conversions
     , text
     , trifecta
   exposed-modules:
@@ -76,6 +77,7 @@ executable dt
     , parsers
     , prettyprinter
     , prettyprinter-ansi-terminal
+    , string-conversions
     , text
     , trifecta
   default-language: Haskell2010
@@ -102,6 +104,7 @@ test-suite spec
     , parsers
     , prettyprinter
     , prettyprinter-ansi-terminal
+    , string-conversions
     , text
     , trifecta
   other-modules:

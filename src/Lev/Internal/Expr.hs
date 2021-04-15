@@ -9,6 +9,7 @@ import Data.Deriving (deriveEq1, deriveOrd1, deriveRead1, deriveShow1)
 import Data.Functor.Classes
 import qualified Data.Map as Map
 import Data.String
+import Data.String.Conversions (ConvertibleStrings, convertString)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
@@ -42,8 +43,8 @@ data Term a
   | Type -- Type
   | Application (Term a) (Term a) -- (fn val)
   | Var a -- x
-  | Pi (Term a) (Scope () Term a) -- (pi X x x)
-  | Sigma (Term a) (Scope () Term a) -- (Sigma X x x)
+  | Pi (Term a) (Scope T.Text Term a) -- (pi X x x)
+  | Sigma (Term a) (Scope T.Text Term a) -- (Sigma X x x)
   | UnitType -- Unit
   | UnitValue -- ()
   | Tag T.Text -- #Zero
@@ -55,9 +56,10 @@ data Term a
   | EndDesc (Term a)
   | RecDesc (Term a) (Term a)
   | ArgDesc (Term a) (Term a)
+  | Data (Term a) (Term a)
   | -- Checkable
     Pair (Term a) (Term a) -- '(x y)
-  | Lambda (Scope () Term a) -- (lam x x)
+  | Lambda (Scope T.Text Term a) -- (lam x x)
   deriving (Functor, Foldable, Traversable, Generic)
 
 makeBound ''Term
@@ -85,17 +87,26 @@ instance IsString a => IsString (Term a) where
 
 -- ** Helpers
 
-pi :: Eq a => a -> Term a -> Term a -> Term a
-pi var typ term = Pi typ $ abstract1 var term
+abstractT :: (Monad f, ConvertibleStrings a T.Text, Eq a) => a -> f a -> Scope T.Text f a
+abstractT var =
+  abstract
+    (\b -> if b == var then Just (convertString var) else Nothing)
+
+pi :: (ConvertibleStrings a T.Text, Eq a) => a -> Term a -> Term a -> Term a
+pi var typ term = Pi typ $ abstractT var term
 
 fnType :: Unbound a => Term a -> Term a -> Term a
-fnType arg term = Pi arg $ abstract1 unbound term
+fnType arg term =
+  Pi arg $
+    abstract
+      (\b -> if b == unbound then Just unbound else Nothing)
+      term
 
-sigma :: Eq a => a -> Term a -> Term a -> Term a
-sigma var typ term = Sigma typ $ abstract1 var term
+sigma :: (ConvertibleStrings a T.Text, Eq a) => a -> Term a -> Term a -> Term a
+sigma var typ term = Sigma typ $ abstractT var term
 
-lambda :: Eq a => a -> Term a -> Term a
-lambda var term = Lambda $ abstract1 var term
+lambda :: (ConvertibleStrings a T.Text, Eq a) => a -> Term a -> Term a
+lambda var term = Lambda $ abstractT var term
 
 pair :: Term a -> Term a -> Term a
 pair = Pair

@@ -50,20 +50,23 @@ parseExprSpec = describe "exprP" $ do
   "applications"
     ~~~ "(fn x y)"
     <==> Application (Application (Var "fn") vx) vy
+  "data"
+    ~~~ "(data desc param)"
+    <==> Data "desc" "param"
 
-parsesAs :: T.Text -> Term T.Text -> Expectation
+parsesAs :: (HasCallStack) => T.Text -> Term T.Text -> Expectation
 parsesAs s x = case parseString exprP mempty (T.unpack s) of
   Success y -> y `shouldBe` x
   Failure e -> expectationFailure $ show e
 
-printsAs :: Term T.Text -> T.Text -> Expectation
+printsAs :: (HasCallStack) => Term T.Text -> T.Text -> Expectation
 printsAs parsed textual =
   renderStrict (layoutPretty defaultLayoutOptions $ pretty parsed)
     `shouldBe` textual
 
 infixr 1 ~~~
 
-(~~~) :: String -> (T.Text, Term T.Text) -> Spec
+(~~~) :: (HasCallStack) => String -> (T.Text, Term T.Text) -> Spec
 msg ~~~ (textual, parsed) =
   context msg $ do
     it "pretty-prints correctly" $ parsed `printsAs` textual
@@ -71,5 +74,5 @@ msg ~~~ (textual, parsed) =
 
 infixr 2 <==>
 
-(<==>) :: a -> b -> (a, b)
+(<==>) :: (HasCallStack) => a -> b -> (a, b)
 (<==>) = (,)

@@ -1,6 +1,9 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Lev.Internal.Pretty where
 
 import Bound
+import Bound.Scope (bindings)
 import Lev.Internal.Expr
 import Prettyprinter as P
 
@@ -15,13 +18,18 @@ pretty' x = case x of
   UnitValue -> "()"
   UnitType -> "Unit"
   Type -> "Type"
-  Pi t v -> P.parens $ "pi" <+> pretty t <+> pretty (fromScope v)
+  Pi t v ->
+    let [var] = bindings v
+     in P.parens $ "pi" <+> pretty t <+> pretty var <+> pretty (fromScope v)
   Tag t -> "#" <> pretty t
   TagType -> "Tag"
   Pair a b -> "'" <> P.parens (pretty a <+> pretty b)
-  Lambda v -> P.parens $ "lam" <+> pretty (fromScope v)
+  Lambda v ->
+    let [var] = bindings v
+     in P.parens $ "lam" <+> pretty var <+> pretty (fromScope v)
+  Data tags desc -> P.parens $ "data" <+> pretty tags <+> pretty desc
 
-instance Pretty a => Pretty (Var () a) where
+instance (Pretty b, Pretty a) => Pretty (Var b a) where
   pretty x = case x of
-    B () -> P.parens mempty
+    B b -> pretty b
     F y -> pretty y

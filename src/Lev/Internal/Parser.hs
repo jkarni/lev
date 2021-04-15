@@ -51,6 +51,7 @@ parensExpP =
     (annotationP <?> "annotation")
       <|> (piP <?> "pi")
       <|> (lambdaP <?> "lambda")
+      <|> (dataP <?> "data")
       <|> (unquoteP <?> "unquote")
       <|> (applicationP <?> "application")
       <|> (unitValueP <?> "unit value")
@@ -117,6 +118,13 @@ unquoteP = do
   t <- tupleP
   return $ Unquote t
 
+dataP :: (Monad m, TokenParsing m) => m (Term T.Text)
+dataP = do
+  _ <- textSymbol "data"
+  desc <- exprP
+  param <- exprP
+  return $ Data desc param
+
 ------------------------------------------------------------------------------
 -- Identifiers
 ------------------------------------------------------------------------------
@@ -127,7 +135,7 @@ identStyle =
     { _styleName = "identifier",
       _styleStart = noneOf "()",
       _styleLetter = alphaNum, -- noneOf "()"
-      _styleReserved = ["lam", "pi", "sigma", "unquote", ":"],
+      _styleReserved = ["lam", "pi", "data", "sigma", "unquote", ":"],
       _styleHighlight = Identifier,
       _styleReservedHighlight = ReservedIdentifier
     }

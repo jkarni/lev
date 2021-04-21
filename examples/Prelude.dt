@@ -3,11 +3,23 @@
  (lam t
   (lam i i)))
 
-(: to (pi Type _ (pi Type _ Type)))
-(= to
+(: -> (pi Type _ (pi Type _ Type)))
+(= ->
  (lam arg
   (lam ret
    (pi arg _ ret))))
+
+(: ChurchBool Type)
+(= ChurchBool
+ (pi Type a (-> '(a a) a)))
+
+(: boolD (description Type))
+(= boolD
+ (description-arg ChurchBool
+  (lam _ (description-end Unit))))
+
+(: Bool Type)
+(= Bool (mu Type boolD Unit))
 
 (: main (pi Type _ Type))
 (= main (unquote '(identity Type)))

@@ -41,6 +41,7 @@ default-extensions:
   - DeriveFunctor
   - DeriveGeneric
   - DeriveTraversable
+  - DerivingStrategies
   - FlexibleContexts
   - FlexibleInstances
   - FunctionalDependencies
@@ -50,6 +51,7 @@ default-extensions:
   - OverloadedStrings
   - StandaloneDeriving
   - RankNTypes
+  - RecordWildCards
   - ScopedTypeVariables
   - TypeFamilies
   - TypeOperators

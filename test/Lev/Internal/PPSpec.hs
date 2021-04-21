@@ -50,9 +50,18 @@ parseExprSpec = describe "exprP" $ do
   "applications"
     ~~~ "(fn x y)"
     <==> Application (Application (Var "fn") vx) vy
-  "data"
-    ~~~ "(data desc param)"
-    <==> Data "desc" "param"
+  "rec"
+    ~~~ "(description-rec type param)"
+    <==> RecDesc "type" "param"
+  "arg"
+    ~~~ "(description-arg type param)"
+    <==> ArgDesc "type" "param"
+  "end"
+    ~~~ "(description-end type)"
+    <==> EndDesc "type"
+  "description"
+    ~~~ "(description type)"
+    <==> Description "type"
 
 parsesAs :: (HasCallStack) => T.Text -> Term T.Text -> Expectation
 parsesAs s x = case parseString exprP mempty (T.unpack s) of

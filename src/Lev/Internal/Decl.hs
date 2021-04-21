@@ -9,8 +9,10 @@ import Control.Monad.State
 import Data.Foldable (find)
 import qualified Data.Map as Map
 import Data.String (IsString)
+import qualified Data.Text as T
 import GHC.Generics (Generic)
 import Lev.Internal.Expr
+import Prettyprinter ((<+>), Pretty (..), indent, line)
 
 data Definition a
   = Definition
@@ -42,21 +44,25 @@ newtype Program a = Program {getProg :: [(Definition a, Signature a)]}
 
 -- | Checks that a definition has correct type, and adds it to the environment
 -- if so (throwing an error otherwise).
-typeCheckDecl :: Unbound a => Definition a -> Signature a -> Environment a ()
+typeCheckDecl :: (Show a, Unbound a) => Definition a -> Signature a -> Environment a ()
 typeCheckDecl def typ = do
-  when (def ^. varName /= typ ^. varName) $
-    throwError "Type signature variable name does not match value name"
+  when (def ^. varName /= typ ^. varName)
+    $ throwError
+    $ SignatureAndDefinitionMismatch
+      { _signature = T.pack . show $ typ ^. varName,
+        _definition = T.pack . show $ def ^. varName
+      }
   withEnvironment $ \e -> checkType e (typ ^. type_) Type
   -- We don't allow recursion yet, so we don't need to extend the context or
   -- add to the environment until we're done.
   withEnvironment $ \e -> checkType e (def ^. value) (typ ^. type_)
   addTermType (def ^. varName) (typ ^. type_)
 
-withEnvironment :: (Context a -> Either String v) -> Environment a v
+withEnvironment :: (Context a -> M v) -> Environment a v
 withEnvironment fn = do
   e <- get
-  case fn (Context e) of
-    Left err -> throwError err
+  case runM $ fn (Context e) of
+    Left err -> throwError $ TypeErr err
     Right v -> return v
 
 -- | Typecheck the entire program.
@@ -80,7 +86,7 @@ evaluateProgram prog = do
   where
     getMain :: Environment a (Term a)
     getMain = case find (\a -> a ^. varName == "main") $ fmap fst (getProg prog) of
-      Nothing -> throwError "Can't evaluate program with no 'main'!"
+      Nothing -> throwError MissingMain
       Just v -> return $ v ^. value
 
 ------------------------------------------------------------------------------
@@ -88,21 +94,39 @@ evaluateProgram prog = do
 -- * Environment
 ------------------------------------------------------------------------------
 
+data Error
+  = TypeErr TypeError
+  | SignatureAndDefinitionMismatch {_signature :: T.Text, _definition :: T.Text}
+  | MissingMain
+  deriving stock (Eq, Show, Read, Generic)
+
+instance Pretty Error where
+  pretty x = case x of
+    TypeErr e -> pretty e
+    MissingMain -> "Missing 'main'"
+    SignatureAndDefinitionMismatch {..} ->
+      "Signature and definition names don't match."
+        <> line
+        <> ( indent 2 $
+               "Signature:" <+> pretty _signature <> line
+                 <> "Definition:" <+> pretty _definition
+           )
+
 newtype Environment v a
   = Environment
-      {getEnv :: ExceptT String (State (Map.Map v (Term v))) a}
+      {getEnv :: ExceptT Error (State (Map.Map v (Term v))) a}
   deriving
     ( Functor,
       Applicative,
       Monad,
-      MonadError String,
+      MonadError Error,
       MonadState (Map.Map v (Term v))
     )
 
 addTermType :: Unbound v => v -> Term v -> Environment v ()
 addTermType name typ = modify (Map.insert name typ)
 
-runEnvironment :: Environment v a -> Either String a
+runEnvironment :: Environment v a -> Either Error a
 runEnvironment (Environment e) = evalState (runExceptT e) Map.empty
 {-
 -- | Resolve all free variables by looking them up in the environment.

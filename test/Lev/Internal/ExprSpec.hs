@@ -18,9 +18,9 @@ spec = do
 inferTypeSpec :: Spec
 inferTypeSpec = describe "inferType" $ do
   let infers :: Term String -> Term String -> Expectation
-      infers x y = inferType emptyCtx x `shouldBe` Right y
+      infers x y = runM (inferType emptyCtx x) `shouldBe` Right y
       fails :: Term String -> Expectation
-      fails x = inferType emptyCtx x `shouldSatisfy` isLeft
+      fails x = runM (inferType emptyCtx x) `shouldSatisfy` isLeft
   it "infers the type of a correctly annotated term" $ do
     infers (Type -: Type) Type
   it "rejects incorrectly annotated terms" $ do
@@ -52,9 +52,9 @@ inferTypeSpec = describe "inferType" $ do
 checkTypeSpec :: Spec
 checkTypeSpec = describe "checkType" $ do
   let checks :: (HasCallStack) => Term String -> Term String -> Expectation
-      checks val typ = checkType emptyCtx val typ `shouldBe` Right ()
+      checks val typ = runM (checkType emptyCtx val typ) `shouldBe` Right ()
       doesn'tCheck :: Term String -> Term String -> Expectation
-      doesn'tCheck val typ = checkType emptyCtx val typ `shouldSatisfy` isLeft
+      doesn'tCheck val typ = runM (checkType emptyCtx val typ) `shouldSatisfy` isLeft
   it "accepts correctly typed pi terms" $ do
     checks (lambda "x" (Var "x")) (fnType UnitType UnitType)
   it "rejects incorrectly typed pi terms" $ do

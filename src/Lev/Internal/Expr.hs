@@ -69,7 +69,41 @@ data Term a
   | Lambda Name (Scope Name Term a) -- (lam x x)
   deriving (Functor, Foldable, Traversable, Generic)
 
-makeBound ''Term
+instance Applicative Term where
+  pure = Var
+  (<*>) = ap
+
+instance Monad Term where
+  {-# INLINE (>>=) #-}
+  x >>= f = case x of
+    Annotation a b ->
+      (Annotation (((>>=) a) f)) (((>>=) b) f)
+    Type -> Type
+    Application a b ->
+      (Application (((>>=) a) f))
+        (((>>=) b) f)
+    Var a -> f a
+    Pi a b c ->
+      ((Pi (((>>=) a) f)) b)
+        (((>>>=) c) f)
+    Sigma a b c ->
+      ((Sigma (((>>=) a) f)) b)
+        (((>>>=) c) f)
+    UnitType -> UnitType
+    UnitValue -> UnitValue
+    Tag a -> Tag a
+    TagType -> TagType
+    Unquote a -> Unquote (((>>=) a) f)
+    Description a -> Description (((>>=) a) f)
+    EndDesc a -> EndDesc (((>>=) a) f)
+    RecDesc a b ->
+      (RecDesc (((>>=) a) f)) (((>>=) b) f)
+    ArgDesc a b ->
+      (ArgDesc (((>>=) a) f)) (((>>=) b) f)
+    Pair a b ->
+      (Pair (((>>=) a) f)) (((>>=) b) f)
+    Lambda a b ->
+      (Lambda a) (((>>>=) b) f)
 
 deriveEq1 ''Term
 

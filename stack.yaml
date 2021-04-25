@@ -12,6 +12,7 @@ packages:
 extra-deps:
 - bound-gen-0.1.0.2@sha256:46a9f37bc734df0b4a93eba0ce496384ef246f36e5386f396923bb5d84bc8c9b,1001
 - monad-gen-0.3.0.1@sha256:a2569465cfbd468d3350ef25de56b3362580e77537224313aab1210f40804a3b,821
+- generic-functor-0.2.0.0@sha256:bb8d78c551850ba119a9e504fbea8c4b9d0a3d62a1dfa2c0d5444ad58ce3f1c1,1281
 
 flags: {}
 

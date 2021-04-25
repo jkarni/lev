@@ -28,7 +28,7 @@ source-repository head
 library
   hs-source-dirs:
       src
-  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes RecordWildCards ScopedTypeVariables TypeFamilies TypeOperators
+  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes RecordWildCards ScopedTypeVariables TypeFamilies TypeOperators
   ghc-options: -Wall
   build-depends:
       base
@@ -36,7 +36,9 @@ library
     , bound-gen
     , containers
     , deriving-compat
+    , generic-functor
     , lens
+    , mmorph
     , monad-gen
     , mtl
     , parsers
@@ -44,6 +46,7 @@ library
     , prettyprinter-ansi-terminal
     , string-conversions
     , text
+    , transformers-compat
     , trifecta
   exposed-modules:
       Lev
@@ -61,7 +64,7 @@ executable dt
       Paths_lev
   hs-source-dirs:
       exe
-  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes RecordWildCards ScopedTypeVariables TypeFamilies TypeOperators
+  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes RecordWildCards ScopedTypeVariables TypeFamilies TypeOperators
   ghc-options: -Wall
   build-depends:
       QuickCheck
@@ -70,8 +73,10 @@ executable dt
     , bound-gen
     , containers
     , deriving-compat
+    , generic-functor
     , lens
     , lev
+    , mmorph
     , monad-gen
     , mtl
     , optparse-applicative
@@ -80,6 +85,7 @@ executable dt
     , prettyprinter-ansi-terminal
     , string-conversions
     , text
+    , transformers-compat
     , trifecta
   default-language: Haskell2010
 
@@ -88,7 +94,7 @@ test-suite spec
   main-is: Spec.hs
   hs-source-dirs:
       test
-  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes RecordWildCards ScopedTypeVariables TypeFamilies TypeOperators
+  default-extensions: ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia FlexibleContexts FlexibleInstances FunctionalDependencies GADTs KindSignatures MultiParamTypeClasses OverloadedStrings StandaloneDeriving RankNTypes RecordWildCards ScopedTypeVariables TypeFamilies TypeOperators
   ghc-options: -Wall
   build-depends:
       QuickCheck
@@ -97,9 +103,11 @@ test-suite spec
     , bound-gen
     , containers
     , deriving-compat
+    , generic-functor
     , hspec
     , lens
     , lev
+    , mmorph
     , monad-gen
     , mtl
     , parsers
@@ -107,6 +115,7 @@ test-suite spec
     , prettyprinter-ansi-terminal
     , string-conversions
     , text
+    , transformers-compat
     , trifecta
   other-modules:
       Lev.Internal.ExprSpec

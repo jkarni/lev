@@ -6,6 +6,7 @@ import Lev.Internal
 import Prettyprinter
 import Test.Hspec
 import Text.Trifecta
+import Text.Trifecta.Delta (Delta)
 import Prelude hiding (pi)
 
 spec :: Spec
@@ -14,7 +15,7 @@ spec = do
 
 parseExprSpec :: Spec
 parseExprSpec = describe "exprP" $ do
-  let vx, vy :: Term T.Text
+  let vx, vy :: Term a T.Text
       vx = Var "x"
       vy = Var "y"
   "variables"
@@ -63,19 +64,19 @@ parseExprSpec = describe "exprP" $ do
     ~~~ "(description type)"
     <==> Description "type"
 
-parsesAs :: (HasCallStack) => T.Text -> Term T.Text -> Expectation
+parsesAs :: (HasCallStack) => T.Text -> Term Delta T.Text -> Expectation
 parsesAs s x = case parseString exprP mempty (T.unpack s) of
   Success y -> y `shouldBe` x
   Failure e -> expectationFailure $ show e
 
-printsAs :: (HasCallStack) => Term T.Text -> T.Text -> Expectation
+printsAs :: (HasCallStack) => Term a T.Text -> T.Text -> Expectation
 printsAs parsed textual =
   renderStrict (layoutPretty defaultLayoutOptions $ pretty parsed)
     `shouldBe` textual
 
 infixr 1 ~~~
 
-(~~~) :: (HasCallStack) => String -> (T.Text, Term T.Text) -> Spec
+(~~~) :: (HasCallStack) => String -> (T.Text, Term Delta T.Text) -> Spec
 msg ~~~ (textual, parsed) =
   context msg $ do
     it "pretty-prints correctly" $ parsed `printsAs` textual

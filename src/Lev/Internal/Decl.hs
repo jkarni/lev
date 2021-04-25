@@ -14,28 +14,28 @@ import GHC.Generics (Generic)
 import Lev.Internal.Expr
 import Prettyprinter ((<+>), Pretty (..), indent, line)
 
-data Definition a
+data Definition b a
   = Definition
       { definitionVarName :: a,
-        definitionValue :: Term a
+        definitionValue :: Term b a
       }
-  deriving (Eq, Show, Read, Functor, Foldable, Traversable, Generic)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 makeFields ''Definition
 
-data Signature a
+data Signature b a
   = Signature
       { signatureVarName :: a,
-        signatureType_ :: Term a
+        signatureType_ :: Term b a
       }
-  deriving (Eq, Show, Read, Functor, Foldable, Traversable, Generic)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 makeFields ''Signature
 
 -- | A program is a list of definitions and signatures. The definitions and
 -- signatures are expected to match up -- i.e., to refer to the same variable.
-newtype Program a = Program {getProg :: [(Definition a, Signature a)]}
-  deriving (Eq, Show, Read, Functor, Foldable, Traversable, Generic)
+newtype Program b a = Program {getProg :: [(Definition b a, Signature b a)]}
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 ------------------------------------------------------------------------------
 
@@ -44,29 +44,34 @@ newtype Program a = Program {getProg :: [(Definition a, Signature a)]}
 
 -- | Checks that a definition has correct type, and adds it to the environment
 -- if so (throwing an error otherwise).
-typeCheckDecl :: (Show a, Unbound a) => Definition a -> Signature a -> Environment a ()
+typeCheckDecl ::
+  (Show a, Monoid b, Unbound a) =>
+  Definition b a ->
+  Signature b a ->
+  Environment b a ()
 typeCheckDecl def typ = do
   when (def ^. varName /= typ ^. varName)
     $ throwError
     $ SignatureAndDefinitionMismatch
       { _signature = T.pack . show $ typ ^. varName,
-        _definition = T.pack . show $ def ^. varName
+        _definition = T.pack . show $ def ^. varName,
+        _location = error "notimpl"
       }
-  withEnvironment $ \e -> checkType e (typ ^. type_) Type
+  withEnvironment $ \e -> checkType e (typ ^. type_) (Type mempty)
   -- We don't allow recursion yet, so we don't need to extend the context or
   -- add to the environment until we're done.
   withEnvironment $ \e -> checkType e (def ^. value) (typ ^. type_)
   addTermType (def ^. varName) (typ ^. type_)
 
-withEnvironment :: (Context a -> M v) -> Environment a v
+withEnvironment :: (Context b a -> M b v) -> Environment b a v
 withEnvironment fn = do
   e <- get
   case runM $ fn (Context e) of
-    Left err -> throwError $ TypeErr err
+    Left (err, bs) -> throwError $ TypeErr bs err
     Right v -> return v
 
 -- | Typecheck the entire program.
-typeCheckProgram :: Unbound a => Program a -> Environment a ()
+typeCheckProgram :: (Monoid b, Unbound a) => Program b a -> Environment b a ()
 typeCheckProgram prog =
   foldM (\() (def, decl) -> typeCheckDecl def decl) () (getProg prog)
 
@@ -76,15 +81,15 @@ typeCheckProgram prog =
 ------------------------------------------------------------------------------
 
 evaluateProgram ::
-  forall a.
-  (IsString a, Unbound a) =>
-  Program a ->
-  Environment a (Term a)
+  forall a b.
+  (IsString a, Monoid b, Unbound a) =>
+  Program b a ->
+  Environment b a (Term b a)
 evaluateProgram prog = do
   typeCheckProgram prog
   nf <$> getMain
   where
-    getMain :: Environment a (Term a)
+    getMain :: Environment b a (Term b a)
     getMain = case find (\a -> a ^. varName == "main") $ fmap fst (getProg prog) of
       Nothing -> throwError MissingMain
       Just v -> return $ v ^. value
@@ -94,15 +99,16 @@ evaluateProgram prog = do
 -- * Environment
 ------------------------------------------------------------------------------
 
-data Error
-  = TypeErr TypeError
-  | SignatureAndDefinitionMismatch {_signature :: T.Text, _definition :: T.Text}
+data Error b
+  = TypeErr {_locations :: [b], _typeError :: TypeError}
+  | SignatureAndDefinitionMismatch
+      {_location :: b, _signature :: T.Text, _definition :: T.Text}
   | MissingMain
-  deriving stock (Eq, Show, Read, Generic)
+  deriving stock (Eq, Show, Read, Generic, Functor)
 
-instance Pretty Error where
+instance Pretty (Error b) where
   pretty x = case x of
-    TypeErr e -> pretty e
+    TypeErr {..} -> pretty _typeError
     MissingMain -> "Missing 'main'"
     SignatureAndDefinitionMismatch {..} ->
       "Signature and definition names don't match."
@@ -112,21 +118,21 @@ instance Pretty Error where
                  <> "Definition:" <+> pretty _definition
            )
 
-newtype Environment v a
+newtype Environment b v a
   = Environment
-      {getEnv :: ExceptT Error (State (Map.Map v (Term v))) a}
-  deriving
+      {getEnv :: ExceptT (Error b) (State (Map.Map v (Term b v))) a}
+  deriving newtype
     ( Functor,
       Applicative,
       Monad,
-      MonadError Error,
-      MonadState (Map.Map v (Term v))
+      MonadError (Error b),
+      MonadState (Map.Map v (Term b v))
     )
 
-addTermType :: Unbound v => v -> Term v -> Environment v ()
+addTermType :: Unbound v => v -> Term b v -> Environment b v ()
 addTermType name typ = modify (Map.insert name typ)
 
-runEnvironment :: Environment v a -> Either Error a
+runEnvironment :: Environment b v a -> Either (Error b) a
 runEnvironment (Environment e) = evalState (runExceptT e) Map.empty
 {-
 -- | Resolve all free variables by looking them up in the environment.

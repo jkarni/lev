@@ -22,11 +22,14 @@ dependencies:
   - bound
   - bound-gen
   - deriving-compat
+  - generic-functor
   - containers
   - mtl
   - monad-gen
+  - mmorph
   - lens
   - text
+  - transformers-compat
   - trifecta
   - parsers
   - prettyprinter
@@ -37,11 +40,13 @@ default-extensions:
   - ConstraintKinds
   - DataKinds
   - DefaultSignatures
+  - DeriveAnyClass
   - DeriveFoldable
   - DeriveFunctor
   - DeriveGeneric
   - DeriveTraversable
   - DerivingStrategies
+  - DerivingVia
   - FlexibleContexts
   - FlexibleInstances
   - FunctionalDependencies

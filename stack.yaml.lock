@@ -18,6 +18,13 @@ packages:
       sha256: a825dc8dcc3ee27dbbc1b71f6853703790ed320249b8f8510bb36d726664e795
   original:
     hackage: monad-gen-0.3.0.1@sha256:a2569465cfbd468d3350ef25de56b3362580e77537224313aab1210f40804a3b,821
+- completed:
+    hackage: generic-functor-0.2.0.0@sha256:bb8d78c551850ba119a9e504fbea8c4b9d0a3d62a1dfa2c0d5444ad58ce3f1c1,1281
+    pantry-tree:
+      size: 530
+      sha256: 5e2cc4c9c2e03db16d3a77c935d0efa06cb1f93100f375fed149a8cfca2ca0e1
+  original:
+    hackage: generic-functor-0.2.0.0@sha256:bb8d78c551850ba119a9e504fbea8c4b9d0a3d62a1dfa2c0d5444ad58ce3f1c1,1281
 snapshots:
 - completed:
     size: 567037

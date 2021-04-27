@@ -7,9 +7,23 @@ import qualified Data.Text as T
 import GHC.Generics (Generic)
 import Lev.Internal.Decl
 import Lev.Internal.Expr
-import Text.Parser.Token.Highlight
+import Text.Parser.Token.Highlight (Highlight (..))
 import Text.Trifecta
-import Text.Trifecta.Delta
+  ( (<?>),
+    DeltaParsing,
+    IdentifierStyle (..),
+    Span,
+    Spanned (..),
+    TokenParsing,
+    char,
+    colon,
+    ident,
+    noneOf,
+    parens,
+    spanned,
+    symbolic,
+    textSymbol,
+  )
 import Prelude hiding (pi, span)
 
 ------------------------------------------------------------------------------
@@ -64,12 +78,12 @@ parensExpP =
 unitTypeP :: (DeltaParsing m) => m (Term Loc T.Text)
 unitTypeP = do
   _ :~ span <- spanned $ textSymbol "Unit"
-  pure $ UnitType span
+  pure $ UnitType (Loc span)
 
 unitValueP :: (DeltaParsing m) => m (Term Loc T.Text)
 unitValueP = do
   _ :~ span <- spanned $ pure ()
-  return $ UnitValue span
+  return $ UnitValue (Loc span)
 
 annotationP :: (DeltaParsing m) => m (Term Loc T.Text)
 annotationP = do
@@ -78,15 +92,15 @@ annotationP = do
   typ <- exprP
   return $ val -: typ
 
-typeP :: TokenParsing m => m (Term Loc T.Text)
+typeP :: (DeltaParsing m) => m (Term Loc T.Text)
 typeP = do
   _ :~ span <- spanned $ textSymbol "Type"
-  pure $ Type span
+  pure $ Type (Loc span)
 
 applicationP :: (DeltaParsing m) => m (Term Loc T.Text)
 applicationP = do
   (fn, args) :~ span <- spanned $ (,) <$> exprP <*> some exprP
-  return $ foldl (Application span) fn args
+  return $ foldl (Application (Loc span)) fn args
 
 varP :: (DeltaParsing m) => m (Term Loc T.Text)
 varP = variable <$> ident identStyle
@@ -104,14 +118,14 @@ lambdaP = do
   (var, body) :~ span <- spanned $ do
     _ <- textSymbol "lam"
     (,) <$> ident identStyle <*> exprP
-  return $ lambda span var body
+  return $ lambda (Loc span) var body
 
 sigmaP :: (DeltaParsing m) => m (Term Loc T.Text)
 sigmaP = do
   (typ, var, body) :~ span <- spanned $ do
     _ <- textSymbol "sigma"
     (,,) <$> exprP <*> ident identStyle <*> exprP
-  return $ sigma span var typ body
+  return $ sigma (Loc span) var typ body
 
 -- Ultimately parsed into nested pairs (i.e., a heterogenous list)
 tupleP :: (DeltaParsing m) => m (Term Loc T.Text)
@@ -119,42 +133,42 @@ tupleP = do
   _ <- char '\''
   parens $ do
     members :~ span <- spanned $ some exprP
-    return $ foldr (Pair span) (UnitValue span) members
+    return $ foldr (Pair (Loc span)) (UnitValue (Loc span)) members
 
 unquoteP :: (DeltaParsing m) => m (Term Loc T.Text)
 unquoteP = do
   t :~ span <- spanned $ do
     _ <- textSymbol "unquote"
     tupleP
-  return $ Unquote span t
+  return $ Unquote (Loc span) t
 
 argP :: (DeltaParsing m) => m (Term Loc T.Text)
 argP = do
   (argType, argFn) :~ span <- spanned $ do
     _ <- textSymbol "description-arg"
     (,) <$> exprP <*> exprP
-  return $ ArgDesc span argType argFn
+  return $ ArgDesc (Loc span) argType argFn
 
 endP :: (DeltaParsing m) => m (Term Loc T.Text)
 endP = do
   endType :~ span <- spanned $ do
     _ <- textSymbol "description-end"
     exprP
-  return $ EndDesc span endType
+  return $ EndDesc (Loc span) endType
 
 recP :: (DeltaParsing m) => m (Term Loc T.Text)
 recP = do
   (recType, recDesc) :~ span <- spanned $ do
     _ <- textSymbol "description-rec"
     (,) <$> exprP <*> exprP
-  return $ RecDesc span recType recDesc
+  return $ RecDesc (Loc span) recType recDesc
 
 descriptionP :: (DeltaParsing m) => m (Term Loc T.Text)
 descriptionP = do
   param :~ span <- spanned $ do
     _ <- textSymbol "description"
     exprP
-  return $ Description span param
+  return $ Description (Loc span) param
 
 ------------------------------------------------------------------------------
 -- Identifiers

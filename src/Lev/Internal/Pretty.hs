@@ -9,10 +9,10 @@ import Lev.Internal.Expr
 import Prettyprinter as P
 import Prelude hiding (exp)
 
-instance P.Pretty a => P.Pretty (Term b a) where
+instance (Monoid b, P.Pretty a) => P.Pretty (Term b a) where
   pretty = pretty'
 
-pretty' :: P.Pretty a => Term b a -> Doc ann
+pretty' :: (Monoid b, P.Pretty a) => Term b a -> Doc ann
 pretty' x = case x of
   Annotation _ a b -> P.parens $ ":" <+> pretty a <+> pretty b
   Application _ f v -> P.parens $ pretty f <+> pretty v

@@ -10,7 +10,7 @@ import Text.Trifecta
 import Text.Trifecta.Delta (Delta)
 
 -- | Parse a file as a single expression.
-parseExpressionFromFile :: (HasCallStack) => FilePath -> IO (Term Delta T.Text)
+parseExpressionFromFile :: (HasCallStack) => FilePath -> IO (Term Loc T.Text)
 parseExpressionFromFile fp = do
   result <- parseFromFileEx exprP fp
   case result of
@@ -20,7 +20,7 @@ parseExpressionFromFile fp = do
     Success a -> return a
 
 -- | Parse a file as a full program.
-parseFile :: (HasCallStack) => FilePath -> IO (Program Delta T.Text)
+parseFile :: (HasCallStack) => FilePath -> IO (Program Loc T.Text)
 parseFile fp = do
   result <- parseFromFileEx programP fp
   case result of
@@ -30,7 +30,7 @@ parseFile fp = do
     Success a -> return a
 
 -- | Type check a file in the empty environment (no imports).
-typeCheckFile :: (HasCallStack) => FilePath -> IO (Program Delta T.Text)
+typeCheckFile :: (HasCallStack) => FilePath -> IO (Program Loc T.Text)
 typeCheckFile fp = do
   parsedProg <- parseFile fp
   case runEnvironment $ typeCheckProgram parsedProg of

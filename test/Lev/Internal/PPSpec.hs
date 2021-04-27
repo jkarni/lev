@@ -15,9 +15,9 @@ spec = do
 
 parseExprSpec :: Spec
 parseExprSpec = describe "exprP" $ do
-  let vx, vy :: Term a T.Text
-      vx = Var "x"
-      vy = Var "y"
+  let vx, vy :: Term () T.Text
+      vx = Var () "x"
+      vy = Var () "y"
   "variables"
     ~~~ "x"
     <==> vx
@@ -64,7 +64,7 @@ parseExprSpec = describe "exprP" $ do
     ~~~ "(description type)"
     <==> Description "type"
 
-parsesAs :: (HasCallStack) => T.Text -> Term Delta T.Text -> Expectation
+parsesAs :: (HasCallStack) => T.Text -> Term Loc T.Text -> Expectation
 parsesAs s x = case parseString exprP mempty (T.unpack s) of
   Success y -> y `shouldBe` x
   Failure e -> expectationFailure $ show e
@@ -76,7 +76,7 @@ printsAs parsed textual =
 
 infixr 1 ~~~
 
-(~~~) :: (HasCallStack) => String -> (T.Text, Term Delta T.Text) -> Spec
+(~~~) :: (HasCallStack) => String -> (T.Text, Term Loc T.Text) -> Spec
 msg ~~~ (textual, parsed) =
   context msg $ do
     it "pretty-prints correctly" $ parsed `printsAs` textual
